@@ -7,7 +7,7 @@ class Program
 {
     static void Main(string[] args)
     {
-        Canvas canvas = new Canvas(50, 20);
+        Canvas canvas = new Canvas(80, 30);
 
         while (true)
         {
@@ -17,7 +17,7 @@ class Program
             Console.WriteLine("1. Нарисовать прямоугольник (#)");
             Console.WriteLine("2. Нарисовать круг (*)");
             Console.WriteLine("3. Нарисовать равнобедренный треугольник (&)");
-            Console.WriteLine("4. Стереть объект (по координатам)");
+            Console.WriteLine("4. Стереть фигуру");
             Console.WriteLine("5. Переместить фигуру");
             Console.WriteLine("6. Добавить фон");
             Console.WriteLine("7. Undo (отмена)");
@@ -64,9 +64,9 @@ class Program
                     break;
 
                 case "4":
-                    Console.Write("Введите X координату: ");
+                    Console.Write("Введите X начальную координату: ");
                     int eraseX = int.Parse(Console.ReadLine());
-                    Console.Write("Введите Y координату: ");
+                    Console.Write("Введите Y начальную координату: ");
                     int eraseY = int.Parse(Console.ReadLine());
                     canvas.Erase(eraseX, eraseY);
                     break;
