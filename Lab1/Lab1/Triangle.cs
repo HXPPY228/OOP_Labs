@@ -10,7 +10,7 @@ namespace Lab1
     {
         public int Height { get; set; }
 
-        public Triangle(int x, int y, int height) : base(x, y, '&')
+        public Triangle(int x, int y, int height, char color) : base(x, y, color)
         {
             Height = height;
         }
@@ -30,6 +30,11 @@ namespace Lab1
                     }
                 }
             }
+        }
+
+        public override Shape Clone()
+        {
+            return new Triangle(this.X, this.Y, this.Height, this.Color);
         }
 
         private bool IsWithinCanvas(int i, int j, char[,] canvas)

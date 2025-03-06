@@ -14,9 +14,9 @@ class Program
             Console.Clear();
             canvas.Display();
             Console.WriteLine("\nКонтекстное меню:");
-            Console.WriteLine("1. Нарисовать прямоугольник (#)");
-            Console.WriteLine("2. Нарисовать круг (*)");
-            Console.WriteLine("3. Нарисовать равнобедренный треугольник (&)");
+            Console.WriteLine("1. Нарисовать прямоугольник");
+            Console.WriteLine("2. Нарисовать круг");
+            Console.WriteLine("3. Нарисовать равнобедренный треугольник");
             Console.WriteLine("4. Стереть фигуру");
             Console.WriteLine("5. Переместить фигуру");
             Console.WriteLine("6. Добавить фон");
@@ -40,7 +40,9 @@ class Program
                     int width = int.Parse(Console.ReadLine());
                     Console.Write("Введите высоту: ");
                     int height = int.Parse(Console.ReadLine());
-                    canvas.DrawShape(new Rectangle(rectX, rectY, width, height));
+                    Console.Write("Введите символ для цвета фигуры (например, #): ");
+                    char rectColor = Console.ReadLine()[0];
+                    canvas.DrawShape(new Rectangle(rectX, rectY, width, height, rectColor));
                     break;
 
                 case "2":
@@ -50,7 +52,9 @@ class Program
                     int circleY = int.Parse(Console.ReadLine());
                     Console.Write("Введите радиус: ");
                     int radius = int.Parse(Console.ReadLine());
-                    canvas.DrawShape(new Circle(circleX, circleY, radius));
+                    Console.Write("Введите символ для цвета фигуры (например, *): ");
+                    char circleColor = Console.ReadLine()[0];
+                    canvas.DrawShape(new Circle(circleX, circleY, radius, circleColor));
                     break;
 
                 case "3":
@@ -60,7 +64,9 @@ class Program
                     int triY = int.Parse(Console.ReadLine());
                     Console.Write("Введите высоту: ");
                     int triHeight = int.Parse(Console.ReadLine());
-                    canvas.DrawShape(new Triangle(triX, triY, triHeight));
+                    Console.Write("Введите символ для цвета фигуры (например, &): ");
+                    char triColor = Console.ReadLine()[0];
+                    canvas.DrawShape(new Triangle(triX, triY, triHeight, triColor));
                     break;
 
                 case "4":

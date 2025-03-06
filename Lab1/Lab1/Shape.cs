@@ -11,6 +11,7 @@ namespace Lab1
         public int X { get; set; }
         public int Y { get; set; }
         public char Color { get; protected set; }
+        public abstract Shape Clone();
 
         protected Shape(int x, int y, char color)
         {

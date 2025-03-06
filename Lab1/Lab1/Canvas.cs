@@ -12,6 +12,8 @@ public class Canvas
     private int CurrentStep;
     private List<Shape> Shapes;
     private char CurrentBackgroundColor = ' ';
+    private List<List<Shape>> ShapesHistory;
+    private List<char> BackgroundHistory;
 
     public Canvas(int width, int height)
     {
@@ -28,6 +30,8 @@ public class Canvas
         History = new List<char[,]> { (char[,])CanvasArray.Clone() };
         CurrentStep = 0;
         Shapes = new List<Shape>();
+        ShapesHistory = new List<List<Shape>> { new List<Shape>() };
+        BackgroundHistory = new List<char> { ' ' };
     }
 
     public void ClearCanvas()
@@ -120,10 +124,16 @@ public class Canvas
         Shape shapeToMove = Shapes?.Find(s => s.X == oldX && s.Y == oldY);
         if (shapeToMove != null)
         {
-            Erase(oldX, oldY);
+
             shapeToMove.X = newX;
             shapeToMove.Y = newY;
-            shapeToMove.Draw(CanvasArray);
+
+            ClearCanvasWithoutShapeReset();
+            foreach (Shape shape in Shapes)
+            {
+                shape.Draw(CanvasArray);
+            }
+
             UpdateHistory();
         }
         else
@@ -133,31 +143,48 @@ public class Canvas
         }
     }
 
+    private void ClearCanvasWithoutShapeReset()
+    {
+        for (int i = 0; i < Height; i++)
+        {
+            for (int j = 0; j < Width; j++)
+            {
+                CanvasArray[i, j] = CurrentBackgroundColor;
+            }
+        }
+    }
+
     private void UpdateHistory()
     {
-        if (History == null) return;
+        if (History == null || ShapesHistory == null) return;
         History.RemoveRange(CurrentStep + 1, History.Count - CurrentStep - 1);
         History.Add((char[,])CanvasArray.Clone());
+        ShapesHistory.RemoveRange(CurrentStep + 1, ShapesHistory.Count - CurrentStep - 1);
+        ShapesHistory.Add(Shapes.Select(s => s.Clone()).ToList());
+        BackgroundHistory.RemoveRange(CurrentStep + 1, BackgroundHistory.Count - CurrentStep - 1);
+        BackgroundHistory.Add(CurrentBackgroundColor);
         CurrentStep = History.Count - 1;
     }
 
     public void Undo()
     {
-        if (CurrentStep > 0 && History != null)
+        if (CurrentStep > 0 && History != null && ShapesHistory != null)
         {
             CurrentStep--;
             CanvasArray = (char[,])History[CurrentStep].Clone();
-            if (Shapes != null) Shapes.Clear();
+            Shapes = ShapesHistory[CurrentStep].Select(s => s.Clone()).ToList(); // Восстанавливаем список фигур
+            CurrentBackgroundColor = BackgroundHistory[CurrentStep];
         }
     }
 
     public void Redo()
     {
-        if (CurrentStep < History.Count - 1 && History != null)
+        if (CurrentStep < History.Count - 1 && History != null && ShapesHistory != null)
         {
             CurrentStep++;
             CanvasArray = (char[,])History[CurrentStep].Clone();
-            if (Shapes != null) Shapes.Clear();
+            Shapes = ShapesHistory[CurrentStep].Select(s => s.Clone()).ToList(); // Восстанавливаем список фигур
+            CurrentBackgroundColor = BackgroundHistory[CurrentStep];
         }
     }
 

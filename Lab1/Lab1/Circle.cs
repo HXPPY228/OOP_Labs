@@ -10,7 +10,7 @@ namespace Lab1
     {
         public int Radius { get; set; }
 
-        public Circle(int x, int y, int radius) : base(x, y, '*')
+        public Circle(int x, int y, int radius, char color) : base(x, y, color)
         {
             Radius = radius;
         }
@@ -32,6 +32,11 @@ namespace Lab1
         private bool IsInsideCircle(int i, int j)
         {
             return (i - Y) * (i - Y) + (j - X) * (j - X) <= Radius * Radius;
+        }
+
+        public override Shape Clone()
+        {
+            return new Circle(this.X, this.Y, this.Radius, this.Color);
         }
 
         private bool IsWithinCanvas(int i, int j, char[,] canvas)

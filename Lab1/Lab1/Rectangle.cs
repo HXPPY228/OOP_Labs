@@ -11,7 +11,7 @@ namespace Lab1
         public int Width { get; set; }
         public int Height { get; set; }
 
-        public Rectangle(int x, int y, int width, int height) : base(x, y, '#')
+        public Rectangle(int x, int y, int width, int height, char color) : base(x, y, color)
         {
             Width = width;
             Height = height;
@@ -29,6 +29,10 @@ namespace Lab1
                     }
                 }
             }
+        }
+        public override Shape Clone()
+        {
+            return new Rectangle(this.X, this.Y, this.Width, this.Height, this.Color);
         }
 
         private bool IsWithinCanvas(int i, int j, char[,] canvas)
