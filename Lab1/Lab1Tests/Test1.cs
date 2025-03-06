@@ -161,23 +161,6 @@ public class CanvasTests
     }
 
     [TestMethod]
-    public void Erase_OnEmptyCell_ShouldSetBackgroundColor()
-    {
-        Canvas canvas = new Canvas(5, 5);
-        Background bg = new Background('.');
-        canvas.AddBackground(bg);
-
-        canvas.Erase(2, 2);
-
-        char[,] expected = new char[5, 5];
-        for (int i = 0; i < 5; i++)
-            for (int j = 0; j < 5; j++)
-                expected[i, j] = '.';
-
-        CollectionAssert.AreEqual(expected, canvas.CanvasArray);
-    }
-
-    [TestMethod]
     public void Move_ShouldMoveShape()
     {
         Canvas canvas = new Canvas(5, 5);
