@@ -85,52 +85,21 @@ public class Canvas
         Shape shapeToErase = Shapes?.Find(s => s.X == x && s.Y == y);
         if (shapeToErase != null)
         {
-            if (shapeToErase is Rectangle rect)
+            Shapes.Remove(shapeToErase);
+
+            ClearCanvasWithoutShapeReset();
+
+            foreach (Shape shape in Shapes)
             {
-                for (int i = rect.Y; i < rect.Y + rect.Height && i < CanvasArray.GetLength(0); i++)
-                {
-                    for (int j = rect.X; j < rect.X + rect.Width && j < CanvasArray.GetLength(1); j++)
-                    {
-                        if (IsWithinCanvas(j, i))
-                            CanvasArray[i, j] = CurrentBackgroundColor;
-                    }
-                }
-            }
-            else if (shapeToErase is Circle circle)
-            {
-                for (int i = circle.Y - circle.Radius; i <= circle.Y + circle.Radius && i < CanvasArray.GetLength(0); i++)
-                {
-                    for (int j = circle.X - circle.Radius; j <= circle.X + circle.Radius && j < CanvasArray.GetLength(1); j++)
-                    {
-                        if (IsWithinCanvas(j, i) && (i - circle.Y) * (i - circle.Y) + (j - circle.X) * (j - circle.X) <= circle.Radius * circle.Radius)
-                            CanvasArray[i, j] = CurrentBackgroundColor;
-                    }
-                }
-            }
-            else if (shapeToErase is Triangle triangle)
-            {
-                for (int i = triangle.Y; i < triangle.Y + triangle.Height && i < CanvasArray.GetLength(0); i++)
-                {
-                    int widthAtRow = 2 * (i - triangle.Y + 1) - 1;
-                    int startX = triangle.X - (widthAtRow / 2);
-                    for (int j = startX; j < startX + widthAtRow && j < CanvasArray.GetLength(1); j++)
-                    {
-                        if (IsWithinCanvas(j, i))
-                            CanvasArray[i, j] = CurrentBackgroundColor;
-                    }
-                }
+                shape.Draw(CanvasArray);
             }
 
-            if (Shapes != null) Shapes.Remove(shapeToErase);
             UpdateHistory();
         }
         else
         {
-            if (CanvasArray != null)
-            {
-                CanvasArray[y, x] = CurrentBackgroundColor;
-                UpdateHistory();
-            }
+            Console.WriteLine("Фигура с указанными координатами не найдена. Нажмите любую клавишу...");
+            Console.ReadKey();
         }
     }
 
