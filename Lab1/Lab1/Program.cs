@@ -7,6 +7,7 @@ class Program
 {
     static void Main(string[] args)
     {
+        Console.SetWindowSize(120, 50);
         Canvas canvas = new Canvas(80, 30);
 
         while (true)
@@ -21,7 +22,7 @@ class Program
             Console.WriteLine("5. Переместить фигуру");
             Console.WriteLine("6. Добавить фон");
             Console.WriteLine("7. Undo (отмена)");
-            Console.WriteLine("8. Redo (повтор)");
+            Console.WriteLine("8. Redo (вернуться)");
             Console.WriteLine("9. Сохранить холст в файл");
             Console.WriteLine("10. Загрузить холст из файла");
             Console.WriteLine("11. Очистить холст");
@@ -32,66 +33,46 @@ class Program
             switch (choice)
             {
                 case "1":
-                    Console.Write("Введите X координату (верхняя левая точка): ");
-                    int rectX = int.Parse(Console.ReadLine());
-                    Console.Write("Введите Y координату (верхняя левая точка): ");
-                    int rectY = int.Parse(Console.ReadLine());
-                    Console.Write("Введите ширину: ");
-                    int width = int.Parse(Console.ReadLine());
-                    Console.Write("Введите высоту: ");
-                    int height = int.Parse(Console.ReadLine());
-                    Console.Write("Введите символ для цвета фигуры (например, #): ");
-                    char rectColor = Console.ReadLine()[0];
+                    int rectX = ReadInt("Введите X координату (верхняя левая точка): ");
+                    int rectY = ReadInt("Введите Y координату (верхняя левая точка): ");
+                    int width = ReadInt("Введите ширину: ");
+                    int height = ReadInt("Введите высоту: ");
+                    char rectColor = ReadChar("Введите символ для цвета фигуры (например, #): ");
                     canvas.DrawShape(new Rectangle(rectX, rectY, width, height, rectColor));
                     break;
 
                 case "2":
-                    Console.Write("Введите X координату (центр): ");
-                    int circleX = int.Parse(Console.ReadLine());
-                    Console.Write("Введите Y координату (центр): ");
-                    int circleY = int.Parse(Console.ReadLine());
-                    Console.Write("Введите радиус: ");
-                    int radius = int.Parse(Console.ReadLine());
-                    Console.Write("Введите символ для цвета фигуры (например, *): ");
-                    char circleColor = Console.ReadLine()[0];
+                    int circleX = ReadInt("Введите X координату (центр): ");
+                    int circleY = ReadInt("Введите Y координату (центр): ");
+                    int radius = ReadInt("Введите радиус: ");
+                    char circleColor = ReadChar("Введите символ для цвета фигуры (например, *): ");
                     canvas.DrawShape(new Circle(circleX, circleY, radius, circleColor));
                     break;
 
                 case "3":
-                    Console.Write("Введите X координату (верхняя точка): ");
-                    int triX = int.Parse(Console.ReadLine());
-                    Console.Write("Введите Y координату (верхняя точка): ");
-                    int triY = int.Parse(Console.ReadLine());
-                    Console.Write("Введите высоту: ");
-                    int triHeight = int.Parse(Console.ReadLine());
-                    Console.Write("Введите символ для цвета фигуры (например, &): ");
-                    char triColor = Console.ReadLine()[0];
+                    int triX = ReadInt("Введите X координату (верхняя точка): ");
+                    int triY = ReadInt("Введите Y координату (верхняя точка): ");
+                    int triHeight = ReadInt("Введите высоту: ");
+                    char triColor = ReadChar("Введите символ для цвета фигуры (например, &): ");
                     canvas.DrawShape(new Triangle(triX, triY, triHeight, triColor));
                     break;
 
                 case "4":
-                    Console.Write("Введите X начальную координату: ");
-                    int eraseX = int.Parse(Console.ReadLine());
-                    Console.Write("Введите Y начальную координату: ");
-                    int eraseY = int.Parse(Console.ReadLine());
+                    int eraseX = ReadInt("Введите X начальную координату: ");
+                    int eraseY = ReadInt("Введите Y начальную координату: ");
                     canvas.Erase(eraseX, eraseY);
                     break;
 
                 case "5":
-                    Console.Write("Введите текущий X координаты фигуры: ");
-                    int oldX = int.Parse(Console.ReadLine());
-                    Console.Write("Введите текущий Y координаты фигуры: ");
-                    int oldY = int.Parse(Console.ReadLine());
-                    Console.Write("Введите новую X координату: ");
-                    int newX = int.Parse(Console.ReadLine());
-                    Console.Write("Введите новую Y координату: ");
-                    int newY = int.Parse(Console.ReadLine());
+                    int oldX = ReadInt("Введите текущий X координаты фигуры: ");
+                    int oldY = ReadInt("Введите текущий Y координаты фигуры: ");
+                    int newX = ReadInt("Введите новую X координату: ");
+                    int newY = ReadInt("Введите новую Y координату: ");
                     canvas.Move(oldX, oldY, newX, newY);
                     break;
 
                 case "6":
-                    Console.Write("Введите символ для фона (например, .): ");
-                    char bgColor = Console.ReadLine()[0];
+                    char bgColor = ReadChar("Введите символ для фона (например, .): ");
                     canvas.AddBackground(new Background(bgColor));
                     break;
 
@@ -126,6 +107,38 @@ class Program
                     Console.WriteLine("Неверный выбор. Нажмите любую клавишу для продолжения...");
                     Console.ReadKey();
                     break;
+            }
+        }
+    }
+    static int ReadInt(string prompt)
+    {
+        while (true)
+        {
+            Console.Write(prompt);
+            string input = Console.ReadLine();
+            if (int.TryParse(input, out int result))
+            {
+                return result;
+            }
+            else
+            {
+                Console.WriteLine("Некорректный ввод. Пожалуйста, введите целое число.");
+            }
+        }
+    }
+    static char ReadChar(string prompt)
+    {
+        while (true)
+        {
+            Console.Write(prompt);
+            string input = Console.ReadLine();
+            if (input.Length == 1)
+            {
+                return input[0];
+            }
+            else
+            {
+                Console.WriteLine("Некорректный ввод. Пожалуйста, введите ровно один символ.");
             }
         }
     }

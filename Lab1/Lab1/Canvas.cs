@@ -7,14 +7,29 @@ public class Canvas
 {
     private readonly int Width;
     private readonly int Height;
-    private char[,] CanvasArray;
+    private char[,] _canvasArray;
     private List<char[,]> History;
     private int CurrentStep;
-    private List<Shape> Shapes;
-    private char CurrentBackgroundColor = ' ';
+    private List<Shape> _shapes;
+    private char _currentBackgroundColor = ' ';
     private List<List<Shape>> ShapesHistory;
     private List<char> BackgroundHistory;
 
+    public char[,] CanvasArray 
+    {
+        get { return _canvasArray; }
+        set { _canvasArray = value; } 
+    }
+    public List<Shape> Shapes
+    { 
+        get { return _shapes; }
+        set { _shapes = value; }
+    }
+    public char CurrentBackgroundColor
+    {
+        get { return _currentBackgroundColor; }
+        set { _currentBackgroundColor = value; }
+    }
     public Canvas(int width, int height)
     {
         Width = width;
@@ -143,7 +158,7 @@ public class Canvas
         }
     }
 
-    private void ClearCanvasWithoutShapeReset()
+    public void ClearCanvasWithoutShapeReset()
     {
         for (int i = 0; i < Height; i++)
         {
@@ -172,7 +187,7 @@ public class Canvas
         {
             CurrentStep--;
             CanvasArray = (char[,])History[CurrentStep].Clone();
-            Shapes = ShapesHistory[CurrentStep].Select(s => s.Clone()).ToList(); // Восстанавливаем список фигур
+            Shapes = ShapesHistory[CurrentStep].Select(s => s.Clone()).ToList();
             CurrentBackgroundColor = BackgroundHistory[CurrentStep];
         }
     }
@@ -183,7 +198,7 @@ public class Canvas
         {
             CurrentStep++;
             CanvasArray = (char[,])History[CurrentStep].Clone();
-            Shapes = ShapesHistory[CurrentStep].Select(s => s.Clone()).ToList(); // Восстанавливаем список фигур
+            Shapes = ShapesHistory[CurrentStep].Select(s => s.Clone()).ToList();
             CurrentBackgroundColor = BackgroundHistory[CurrentStep];
         }
     }
