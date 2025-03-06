@@ -82,7 +82,7 @@ public class Canvas
     {
         if (!IsWithinCanvas(x, y)) return;
 
-        Shape shapeToErase = Shapes?.Find(s => s.X == x && s.Y == y);
+        Shape shapeToErase = Shapes?.FindLast(s => s.X == x && s.Y == y);
         if (shapeToErase != null)
         {
             Shapes.Remove(shapeToErase);
@@ -105,7 +105,7 @@ public class Canvas
 
     public void Move(int oldX, int oldY, int newX, int newY)
     {
-        Shape shapeToMove = Shapes?.Find(s => s.X == oldX && s.Y == oldY);
+        Shape shapeToMove = Shapes?.FindLast(s => s.X == oldX && s.Y == oldY);
         if (shapeToMove != null)
         {
 
