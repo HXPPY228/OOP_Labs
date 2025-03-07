@@ -2,7 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-
+using System.Xml;
+using Newtonsoft.Json;
 public class Canvas
 {
     private readonly int Width;
@@ -174,34 +175,41 @@ public class Canvas
 
     public void Save(string filename)
     {
-        using (StreamWriter writer = new StreamWriter(filename))
+        var settings = new JsonSerializerSettings
         {
-            for (int i = 0; i < Height; i++)
-            {
-                string line = "";
-                for (int j = 0; j < Width; j++)
-                {
-                    line += CanvasArray[i, j];
-                }
-                writer.WriteLine(line);
-            }
-        }
+            TypeNameHandling = TypeNameHandling.All,
+            Formatting = Newtonsoft.Json.Formatting.Indented
+        };
+        var data = new
+        {
+            BackgroundColor = CurrentBackgroundColor,
+            Shapes = Shapes
+        };
+        string json = JsonConvert.SerializeObject(data, settings);
+        File.WriteAllText(filename, json);
     }
 
     public void Load(string filename)
     {
         if (!File.Exists(filename)) return;
-        string[] lines = File.ReadAllLines(filename);
-        for (int i = 0; i < Math.Min(Height, lines.Length); i++)
+
+        string json = File.ReadAllText(filename);
+        var settings = new JsonSerializerSettings
         {
-            for (int j = 0; j < Math.Min(Width, lines[i].Length); j++)
-            {
-                CanvasArray[i, j] = lines[i][j];
-            }
+            TypeNameHandling = TypeNameHandling.All
+        };
+        var data = JsonConvert.DeserializeAnonymousType(json, new { BackgroundColor = ' ', Shapes = new List<Shape>() }, settings);
+
+        CurrentBackgroundColor = data.BackgroundColor;
+        Shapes = data.Shapes;
+
+        ClearCanvasWithoutShapeReset();
+        foreach (Shape shape in Shapes)
+        {
+            shape.Draw(CanvasArray);
         }
-        CurrentBackgroundColor = FindBackgroundColor();
+
         UpdateHistory();
-        if (Shapes != null) Shapes.Clear();
     }
 
     private char FindBackgroundColor()

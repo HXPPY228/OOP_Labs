@@ -1,5 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Lab1;
+using Newtonsoft.Json;
 
 [TestClass]
 public class CanvasTests
@@ -272,56 +273,18 @@ public class CanvasTests
     }
 
     [TestMethod]
-    public void Save_ShouldSaveCanvasToFile()
-    {
-        Canvas canvas = new Canvas(3, 3);
-        Rectangle rect = new Rectangle(0, 0, 2, 2, '#');
-        canvas.DrawShape(rect);
-        string filename = "test_save.txt";
-
-        canvas.Save(filename);
-
-        string[] lines = File.ReadAllLines(filename);
-        Assert.AreEqual(3, lines.Length);
-        Assert.AreEqual("## ", lines[0]);
-        Assert.AreEqual("## ", lines[1]);
-        Assert.AreEqual("   ", lines[2]);
-
-        File.Delete(filename);
-    }
-
-    [TestMethod]
     public void Save_EmptyCanvas_ShouldSaveEmptyLines()
     {
         Canvas canvas = new Canvas(2, 2);
-        string filename = "test_save_empty.txt";
+        string filename = "test_save_empty.json";
 
         canvas.Save(filename);
 
-        string[] lines = File.ReadAllLines(filename);
-        Assert.AreEqual(2, lines.Length);
-        Assert.AreEqual("  ", lines[0]);
-        Assert.AreEqual("  ", lines[1]);
+        string json = File.ReadAllText(filename);
+        var data = JsonConvert.DeserializeAnonymousType(json, new { BackgroundColor = ' ', Shapes = new List<Shape>() });
 
-        File.Delete(filename);
-    }
-
-    [TestMethod]
-    public void Load_ShouldLoadCanvasFromFile()
-    {
-        Canvas canvas = new Canvas(3, 3);
-        string filename = "test_load.txt";
-        File.WriteAllLines(filename, ["## ", "## ", "   "]);
-
-        canvas.Load(filename);
-
-        char[,] expected = new char[3, 3]
-        {
-        { '#', '#', ' ' },
-        { '#', '#', ' ' },
-        { ' ', ' ', ' ' }
-        };
-        CollectionAssert.AreEqual(expected, canvas.CanvasArray);
+        Assert.AreEqual(' ', data.BackgroundColor);
+        Assert.AreEqual(0, data.Shapes.Count);
 
         File.Delete(filename);
     }

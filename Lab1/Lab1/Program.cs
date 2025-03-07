@@ -85,13 +85,13 @@ class Program
                     break;
 
                 case "9":
-                    Console.Write("Введите имя файла (например, canvas.txt): ");
+                    Console.Write("Введите имя файла (например, canvas): ");
                     string saveFile = Console.ReadLine();
                     canvas.Save(saveFile);
                     break;
 
                 case "10":
-                    Console.Write("Введите имя файла (например, canvas.txt): ");
+                    Console.Write("Введите имя файла (например, canvas): ");
                     string loadFile = Console.ReadLine();
                     canvas.Load(loadFile);
                     break;
