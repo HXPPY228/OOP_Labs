@@ -1,258 +1,36 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text.Json;
-
-// Абстрактный класс документа (Abstract Factory)
-abstract class Document
-{
-    public string Title { get; set; }
-    public string Content { get; set; }
-    public abstract void Display();
-}
-
-// Конкретные типы документов (Concrete Products)
-class PlainTextDocument : Document
-{
-    public PlainTextDocument(string title)
-    {
-        Title = title;
-        Content = "";
-    }
-
-    public override void Display()
-    {
-        Console.WriteLine($"Обычный текст: {Content}");
-    }
-}
-
-class MarkdownDocument : Document
-{
-    public MarkdownDocument(string title)
-    {
-        Title = title;
-        Content = "";
-    }
-
-    public override void Display()
-    {
-        Console.WriteLine($"Markdown: {Content}");
-    }
-}
-
-// Интерфейс форматирования (Decorator)
-interface ITextFormatter
-{
-    string Format(string text);
-}
-
-// Базовый текст (Component)
-class BasicText : ITextFormatter
-{
-    public string Format(string text) => text;
-}
-
-// Декораторы форматирования
-class BoldFormatter : ITextFormatter
-{
-    private ITextFormatter _formatter;
-    public BoldFormatter(ITextFormatter formatter) => _formatter = formatter;
-    public string Format(string text) => $"**{_formatter.Format(text)}**";
-}
-
-class ItalicFormatter : ITextFormatter
-{
-    private ITextFormatter _formatter;
-    public ItalicFormatter(ITextFormatter formatter) => _formatter = formatter;
-    public string Format(string text) => $"*{_formatter.Format(text)}*";
-}
-
-// Команда (Command pattern)
-interface ICommand
-{
-    void Execute();
-    void Undo();
-}
-
-class TextEditCommand : ICommand
-{
-    private Document _document;
-    private string _oldContent;
-    private string _newContent;
-
-    public TextEditCommand(Document document, string newContent)
-    {
-        _document = document;
-        _oldContent = document.Content;
-        _newContent = newContent;
-    }
-
-    public void Execute() => _document.Content = _newContent;
-    public void Undo() => _document.Content = _oldContent;
-}
-
-// Система Undo/Redo (Memento + Command)
-class History
-{
-    private Stack<ICommand> _undoStack = new Stack<ICommand>();
-    private Stack<ICommand> _redoStack = new Stack<ICommand>();
-
-    public void ExecuteCommand(ICommand command)
-    {
-        command.Execute();
-        _undoStack.Push(command);
-        _redoStack.Clear();
-    }
-
-    public void Undo()
-    {
-        if (_undoStack.Count > 0)
-        {
-            var command = _undoStack.Pop();
-            command.Undo();
-            _redoStack.Push(command);
-        }
-    }
-
-    public void Redo()
-    {
-        if (_redoStack.Count > 0)
-        {
-            var command = _redoStack.Pop();
-            command.Execute();
-            _undoStack.Push(command);
-        }
-    }
-}
-
-// Хранилище (Strategy)
-interface IStorage
-{
-    void Save(Document document);
-    Document Load(string title);
-}
-
-class FileStorage : IStorage
-{
-    public void Save(Document document)
-    {
-        File.WriteAllText($"{document.Title}.txt", document.Content);
-    }
-
-    public Document Load(string title)
-    {
-        var content = File.ReadAllText($"{title}.txt");
-        return new PlainTextDocument(title) { Content = content };
-    }
-}
-
-// Фабрика документов (Factory)
-class DocumentFactory
-{
-    public Document CreateDocument(string type, string title)
-    {
-        return type.ToLower() switch
-        {
-            "plaintext" => new PlainTextDocument(title),
-            "markdown" => new MarkdownDocument(title),
-            _ => throw new ArgumentException("Неподдерживаемый тип документа")
-        };
-    }
-}
-
-// Наблюдатель (Observer)
-interface IDocumentObserver
-{
-    void Update(string message);
-}
-
-class User : IDocumentObserver
-{
-    public string Name { get; set; }
-    public string Role { get; set; }
-
-    public void Update(string message)
-    {
-        Console.WriteLine($"{Name} ({Role}) получил уведомление: {message}");
-    }
-}
-
-// Главный класс редактора (Facade)
-class DocumentEditor
-{
-    private Document _currentDocument;
-    private History _history = new History();
-    private IStorage _storage;
-    private List<IDocumentObserver> _observers = new List<IDocumentObserver>();
-    private DocumentFactory _factory = new DocumentFactory();
-
-    public DocumentEditor(IStorage storage)
-    {
-        _storage = storage;
-    }
-
-    public void CreateDocument(string type, string title)
-    {
-        _currentDocument = _factory.CreateDocument(type, title);
-        NotifyObservers($"Создан документ: {title}");
-    }
-
-    public void EditText(string newContent)
-    {
-        var command = new TextEditCommand(_currentDocument, newContent);
-        _history.ExecuteCommand(command);
-        NotifyObservers("Текст отредактирован");
-    }
-
-    public void Undo() => _history.Undo();
-    public void Redo() => _history.Redo();
-
-    public void Save() => _storage.Save(_currentDocument);
-    public void Load(string title) => _currentDocument = _storage.Load(title);
-
-    public void AddObserver(IDocumentObserver observer) => _observers.Add(observer);
-    private void NotifyObservers(string message)
-    {
-        foreach (var observer in _observers)
-            observer.Update(message);
-    }
-
-    public void Display() => _currentDocument?.Display();
-}
+using Newtonsoft.Json;
+using System.Xml.Serialization;
+using Lab2.Interfaces;
+using Lab2.Classes;
+using Lab2.Documentn;
 
 class Program
 {
-    static DocumentEditor editor = new DocumentEditor(new FileStorage());
-    static ITextFormatter formatter = new BasicText();
-
     static void Main(string[] args)
     {
-        // Инициализация пользователей
-        var admin = new User { Name = "Алексей", Role = "Admin" };
-        var editorUser = new User { Name = "Мария", Role = "Editor" };
+        Document currentDocument = null;
+        bool running = true;
 
-        editor.AddObserver(admin);
-        editor.AddObserver(editorUser);
-
-        ShowMenu();
-    }
-
-    static void ShowMenu()
-    {
-        while (true)
+        while (running)
         {
             Console.Clear();
-            Console.WriteLine("=== Текстовый редактор ===");
-            Console.WriteLine("1. Создать новый документ");
-            Console.WriteLine("2. Редактировать текст");
-            Console.WriteLine("3. Применить форматирование");
-            Console.WriteLine("4. Показать документ");
-            Console.WriteLine("5. Отменить действие (Undo)");
-            Console.WriteLine("6. Повторить действие (Redo)");
-            Console.WriteLine("7. Сохранить документ");
-            Console.WriteLine("8. Загрузить документ");
-            Console.WriteLine("0. Выход");
-            Console.Write("Выберите действие: ");
+            Console.WriteLine("Document Management System");
+            Console.WriteLine("------------------------");
+            Console.WriteLine("Current Document: " + (currentDocument?.FilePath ?? "None"));
+            Console.WriteLine("Content: " + (currentDocument?.GetDisplayText() ?? "No content"));
+            Console.WriteLine("\nOptions:");
+            Console.WriteLine("1. Create New Document");
+            Console.WriteLine("2. Open Document");
+            Console.WriteLine("3. Append Text");
+            Console.WriteLine("4. Insert Text");
+            Console.WriteLine("5. Delete Text");
+            Console.WriteLine("6. Search Word");
+            Console.WriteLine("7. Save Document");
+            Console.WriteLine("8. Delete Document");
+            Console.WriteLine("9. Exit");
+            Console.Write("\nEnter your choice (1-9): ");
 
             string choice = Console.ReadLine();
 
@@ -261,104 +39,174 @@ class Program
                 switch (choice)
                 {
                     case "1":
-                        CreateDocument();
+                        currentDocument = new Document();
+                        Console.WriteLine("New document created.");
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
                         break;
+
                     case "2":
-                        EditText();
+                        Console.Write("Enter file path to open (e.g., document.txt/json/xml): ");
+                        string openPath = Console.ReadLine();
+                        if (File.Exists(openPath))
+                        {
+                            string fileContent = File.ReadAllText(openPath);
+                            currentDocument = new Document();
+                            currentDocument.AppendText(fileContent);
+                            currentDocument.FilePath = openPath;
+                            Console.WriteLine($"Document loaded. Content:\n{currentDocument.GetDisplayText()}");
+                        }
+                        else
+                        {
+                            Console.WriteLine("File does not exist.");
+                        }
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
                         break;
+
                     case "3":
-                        ApplyFormatting();
+                        if (currentDocument == null)
+                        {
+                            Console.WriteLine("No document loaded. Create or open a document first.");
+                        }
+                        else
+                        {
+                            Console.Write("Enter text to append (use **bold**, __underline__, *italic*): ");
+                            string appendText = Console.ReadLine();
+                            currentDocument.AppendText(appendText);
+                            Console.WriteLine("Text appended.");
+                        }
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
                         break;
+
                     case "4":
-                        editor.Display();
+                        if (currentDocument == null)
+                        {
+                            Console.WriteLine("No document loaded. Create or open a document first.");
+                        }
+                        else
+                        {
+                            Console.Write("Enter character position to insert at (ignoring **, __, *): ");
+                            int insertPos = int.Parse(Console.ReadLine());
+                            Console.Write("Enter text to insert (use **bold**, __underline__, *italic*): ");
+                            string insertText = Console.ReadLine();
+                            currentDocument.InsertText(insertPos, insertText);
+                            Console.WriteLine("Text inserted.");
+                        }
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
                         break;
+
                     case "5":
-                        editor.Undo();
-                        Console.WriteLine("Действие отменено");
+                        if (currentDocument == null)
+                        {
+                            Console.WriteLine("No document loaded. Create or open a document first.");
+                        }
+                        else
+                        {
+                            Console.Write("Enter start fragment index to delete: ");
+                            int deleteStart = int.Parse(Console.ReadLine());
+                            Console.Write("Enter number of fragments to delete: ");
+                            int deleteCount = int.Parse(Console.ReadLine());
+                            currentDocument.DeleteText(deleteStart, deleteCount);
+                            Console.WriteLine("Text deleted.");
+                        }
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
                         break;
+
                     case "6":
-                        editor.Redo();
-                        Console.WriteLine("Действие повторено");
+                        if (currentDocument == null)
+                        {
+                            Console.WriteLine("No document loaded. Create or open a document first.");
+                        }
+                        else
+                        {
+                            Console.Write("Enter word to search (positions ignore **, __, *): ");
+                            string searchWord = Console.ReadLine();
+                            List<int> positions = currentDocument.SearchWord(searchWord);
+                            if (positions.Count > 0)
+                            {
+                                Console.WriteLine($"Found '{searchWord}' at positions: {string.Join(", ", positions)}");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"'{searchWord}' not found.");
+                            }
+                        }
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
                         break;
+
                     case "7":
-                        editor.Save();
-                        Console.WriteLine("Документ сохранен");
+                        if (currentDocument == null)
+                        {
+                            Console.WriteLine("No document loaded. Create or open a document first.");
+                        }
+                        else
+                        {
+                            string savePath;
+                            if (string.IsNullOrEmpty(currentDocument.FilePath))
+                            {
+                                Console.Write("Enter file path to save (e.g., document.txt/json/xml): ");
+                                savePath = Console.ReadLine();
+                            }
+                            else
+                            {
+                                savePath = currentDocument.FilePath;
+                            }
+                            File.WriteAllText(savePath, currentDocument.GetOriginalText());
+                            if (string.IsNullOrEmpty(currentDocument.FilePath))
+                            {
+                                currentDocument.FilePath = savePath;
+                            }
+                            Console.WriteLine($"Document saved to: {savePath}");
+                        }
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
                         break;
+
                     case "8":
-                        LoadDocument();
+                        Console.Write("Enter file path to delete: ");
+                        string deletePath = Console.ReadLine();
+                        if (File.Exists(deletePath))
+                        {
+                            File.Delete(deletePath);
+                            if (currentDocument != null && currentDocument.FilePath == deletePath)
+                            {
+                                currentDocument = null;
+                            }
+                            Console.WriteLine("Document deleted successfully.");
+                        }
+                        else
+                        {
+                            Console.WriteLine("File does not exist.");
+                        }
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
                         break;
-                    case "0":
-                        return;
+
+                    case "9":
+                        running = false;
+                        Console.WriteLine("Exiting program.");
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
+                        break;
+
                     default:
-                        Console.WriteLine("Неверный выбор!");
+                        Console.WriteLine("Invalid choice. Please enter a number between 1 and 10.");
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
                         break;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ошибка: {ex.Message}");
+                Console.WriteLine($"Error: {ex.Message}");
+                Console.WriteLine("Press any key to continue...");
+                Console.ReadKey();
             }
-
-            Console.WriteLine("Нажмите Enter для продолжения...");
-            Console.ReadLine();
         }
-    }
-
-    static void CreateDocument()
-    {
-        Console.WriteLine("Выберите тип документа:");
-        Console.WriteLine("1. PlainText");
-        Console.WriteLine("2. Markdown");
-        string typeChoice = Console.ReadLine();
-
-        Console.Write("Введите название документа: ");
-        string title = Console.ReadLine();
-
-        string type = typeChoice switch
-        {
-            "1" => "plaintext",
-            "2" => "markdown",
-            _ => throw new Exception("Неверный тип документа")
-        };
-
-        editor.CreateDocument(type, title);
-        Console.WriteLine("Документ создан успешно!");
-    }
-
-    static void EditText()
-    {
-        Console.Write("Введите новый текст: ");
-        string text = Console.ReadLine();
-        editor.EditText(text);
-        Console.WriteLine("Текст обновлен!");
-    }
-
-    static void ApplyFormatting()
-    {
-        Console.WriteLine("Выберите форматирование:");
-        Console.WriteLine("1. Обычный текст");
-        Console.WriteLine("2. Жирный");
-        Console.WriteLine("3. Курсив");
-        Console.WriteLine("4. Жирный + Курсив");
-        string formatChoice = Console.ReadLine();
-
-        formatter = formatChoice switch
-        {
-            "1" => new BasicText(),
-            "2" => new BoldFormatter(new BasicText()),
-            "3" => new ItalicFormatter(new BasicText()),
-            "4" => new BoldFormatter(new ItalicFormatter(new BasicText())),
-            _ => throw new Exception("Неверный выбор форматирования")
-        };
-
-        Console.WriteLine("Форматирование применено!");
-    }
-
-    static void LoadDocument()
-    {
-        Console.Write("Введите название документа для загрузки: ");
-        string title = Console.ReadLine();
-        editor.Load(title);
-        Console.WriteLine("Документ загружен!");
     }
 }
