@@ -5,23 +5,28 @@ using System.Text;
 using System.Threading.Tasks;
 using Lab2.Interfaces;
 using Lab2.Classes;
+using Lab2.Enums;
+using Newtonsoft.Json;
+using System.Xml.Serialization;
 
 namespace Lab2.Documentn
 {
     public class Document
     {
-        private List<ITextFragment> _fragments;
+        public List<ITextFragment> _fragments;
         public string FilePath { get; set; }
+        public DocumentType Type { get; set; }
 
-        public Document()
+        public Document(DocumentType type)
         {
             _fragments = new List<ITextFragment>();
             FilePath = string.Empty;
+            Type = type;
         }
 
         public void AppendText(string text)
         {
-            var newFragments = TextParser.Parse(text);
+            var newFragments = TextParser.Parse(text, Type);
             _fragments.AddRange(newFragments);
         }
 
@@ -32,7 +37,7 @@ namespace Lab2.Documentn
                 throw new ArgumentOutOfRangeException("Character position is out of range.");
             }
 
-            var newFragments = TextParser.Parse(text);
+            var newFragments = TextParser.Parse(text, Type);
             if (charPosition == GetTextWithoutMarkersLength())
             {
                 _fragments.AddRange(newFragments);
@@ -92,8 +97,8 @@ namespace Lab2.Documentn
                         decoratorSuffix = "*";
                     }
 
-                    ITextFragment leftFragment = TextParser.Parse(decoratorPrefix + leftText + decoratorSuffix)[0];
-                    ITextFragment rightFragment = TextParser.Parse(decoratorPrefix + rightText + decoratorSuffix)[0];
+                    ITextFragment leftFragment = TextParser.Parse(decoratorPrefix + leftText + decoratorSuffix, Type)[0];
+                    ITextFragment rightFragment = TextParser.Parse(decoratorPrefix + rightText + decoratorSuffix, Type)[0];
 
                     _fragments[i] = leftFragment;
 
@@ -133,11 +138,19 @@ namespace Lab2.Documentn
 
         public string GetDisplayText()
         {
+            if (Type == DocumentType.PlainText)
+            {
+                return string.Join("", _fragments.Select(f => f.GetOriginalText()));
+            }
             return string.Join("", _fragments.Select(f => f.GetText()));
         }
 
         public string GetOriginalText()
         {
+            if (Type == DocumentType.RichText)
+            {
+                return string.Join("", _fragments.Select(f => f.GetText()));
+            }
             return string.Join("", _fragments.Select(f => f.GetOriginalText()));
         }
 
@@ -160,28 +173,79 @@ namespace Lab2.Documentn
     }
     public class DocumentData
     {
+        public DocumentType Type { get; set; }
         public string Content { get; set; }
     }
 
     public static class DocumentManager
     {
-        public static Document CreateNewDocument()
+        public static Document CreateNewDocument(DocumentType type)
         {
-            return new Document();
+            return new Document(type);
         }
 
         public static Document OpenDocument(string path)
         {
-            string format = GetFormatFromPath(path);
-            IDocumentLoader loader = DocumentFormatFactory.GetLoader(format);
-            return loader.Load(path);
+            string format = Path.GetExtension(path).ToLower().TrimStart('.');
+            if (format == "txt")
+            {
+                string content = File.ReadAllText(path);
+                Document doc = new Document(DocumentType.PlainText);
+                doc.AppendText(content);
+                doc.FilePath = path;
+                return doc;
+            }
+            else if (format == "json")
+            {
+                string json = File.ReadAllText(path);
+                DocumentData data = JsonConvert.DeserializeObject<DocumentData>(json);
+                Document doc = new Document(data.Type);
+                doc.AppendText(data.Content);
+                doc.FilePath = path;
+                return doc;
+            }
+            else if (format == "xml")
+            {
+                using (var reader = new StreamReader(path))
+                {
+                    var serializer = new XmlSerializer(typeof(DocumentData));
+                    DocumentData data = (DocumentData)serializer.Deserialize(reader);
+                    Document doc = new Document(data.Type);
+                    doc.AppendText(data.Content);
+                    doc.FilePath = path;
+                    return doc;
+                }
+            }
+            throw new ArgumentException("Unsupported file format");
         }
 
         public static void SaveDocument(Document document, string path)
         {
-            string format = GetFormatFromPath(path);
-            IDocumentSaver saver = DocumentFormatFactory.GetSaver(format);
-            saver.Save(path, document);
+            string format = Path.GetExtension(path).ToLower().TrimStart('.');
+            if (format == "txt")
+            {
+                File.WriteAllText(path, document.GetOriginalText());
+            }
+            else if (format == "json")
+            {
+                DocumentData data = new DocumentData { Type = document.Type, Content = document.GetOriginalText() };
+                string json = JsonConvert.SerializeObject(data);
+                File.WriteAllText(path, json);
+            }
+            else if (format == "xml")
+            {
+                DocumentData data = new DocumentData { Type = document.Type, Content = document.GetOriginalText() };
+                var serializer = new XmlSerializer(typeof(DocumentData));
+                using (var writer = new StreamWriter(path))
+                {
+                    serializer.Serialize(writer, data);
+                }
+            }
+            else
+            {
+                throw new ArgumentException("Unsupported file format");
+            }
+            document.FilePath = path;
         }
 
         public static void DeleteDocument(string path)

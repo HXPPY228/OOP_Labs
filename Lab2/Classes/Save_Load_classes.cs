@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using Lab2.Documentn;
+using Lab2.Enums;
 
 namespace Lab2.Classes
 {
@@ -94,7 +95,11 @@ namespace Lab2.Classes
 
         public void Save(string path, Document document)
         {
-            var data = new DocumentData { Content = document.GetOriginalText() };
+            var data = new DocumentData
+            {
+                Type = document.Type,
+                Content = document.GetOriginalText()
+            };
             _jsonFileSaver.SaveAsJson(path, data);
         }
     }
@@ -110,7 +115,11 @@ namespace Lab2.Classes
 
         public void Save(string path, Document document)
         {
-            var data = new DocumentData { Content = document.GetOriginalText() };
+            var data = new DocumentData
+            {
+                Type = document.Type,
+                Content = document.GetOriginalText()
+            };
             _xmlFileSaver.SerializeToXml(path, data);
         }
     }
@@ -127,8 +136,8 @@ namespace Lab2.Classes
         public Document Load(string path)
         {
             string content = _txtFileLoader.ReadFromTxt(path);
-            Document doc = new Document();
-            doc.AppendText(content); // Парсинг текста и добавление фрагментов
+            Document doc = new Document(DocumentType.PlainText);
+            doc.AppendText(content);
             doc.FilePath = path;
             return doc;
         }
@@ -146,8 +155,9 @@ namespace Lab2.Classes
         public Document Load(string path)
         {
             var data = _jsonFileLoader.LoadFromJson(path);
-            Document doc = new Document();
-            doc.AppendText(data.Content); // Парсинг текста и добавление фрагментов
+            DocumentType type = data.Type != 0 ? data.Type : DocumentType.PlainText;
+            Document doc = new Document(type);
+            doc.AppendText(data.Content);
             doc.FilePath = path;
             return doc;
         }
@@ -165,8 +175,9 @@ namespace Lab2.Classes
         public Document Load(string path)
         {
             var data = _xmlFileLoader.DeserializeFromXml(path);
-            Document doc = new Document();
-            doc.AppendText(data.Content); // Парсинг текста и добавление фрагментов
+            DocumentType type = data.Type != 0 ? data.Type : DocumentType.PlainText;
+            Document doc = new Document(type);
+            doc.AppendText(data.Content);
             doc.FilePath = path;
             return doc;
         }

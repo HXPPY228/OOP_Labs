@@ -5,12 +5,14 @@ using System.Xml.Serialization;
 using Lab2.Interfaces;
 using Lab2.Classes;
 using Lab2.Documentn;
+using Lab2.Enums;
 
 class Program
 {
     static void Main(string[] args)
     {
         Document currentDocument = null;
+        UndoRedoManager undoRedoManager = new UndoRedoManager();
         bool running = true;
 
         while (running)
@@ -19,6 +21,7 @@ class Program
             Console.WriteLine("Document Management System");
             Console.WriteLine("------------------------");
             Console.WriteLine("Current Document: " + (currentDocument?.FilePath ?? "None"));
+            Console.WriteLine("Current Document type: " + (currentDocument != null ? currentDocument.Type.ToString() : "None"));
             Console.WriteLine("Content: " + (currentDocument?.GetDisplayText() ?? "No content"));
             Console.WriteLine("\nOptions:");
             Console.WriteLine("1. Create New Document");
@@ -29,8 +32,10 @@ class Program
             Console.WriteLine("6. Search Word");
             Console.WriteLine("7. Save Document");
             Console.WriteLine("8. Delete Document");
-            Console.WriteLine("9. Exit");
-            Console.Write("\nEnter your choice (1-9): ");
+            Console.WriteLine("9. Undo");
+            Console.WriteLine("10. Redo");
+            Console.WriteLine("11. Exit");
+            Console.Write("\nEnter your choice (1-11): ");
 
             string choice = Console.ReadLine();
 
@@ -39,8 +44,30 @@ class Program
                 switch (choice)
                 {
                     case "1":
-                        currentDocument = new Document();
-                        Console.WriteLine("New document created.");
+                        Console.WriteLine("Select document type:");
+                        Console.WriteLine("1. PlainText");
+                        Console.WriteLine("2. Markdown");
+                        Console.WriteLine("3. RichText");
+                        string typeChoice = Console.ReadLine();
+                        DocumentType docType;
+                        switch (typeChoice)
+                        {
+                            case "1":
+                                docType = DocumentType.PlainText;
+                                break;
+                            case "2":
+                                docType = DocumentType.Markdown;
+                                break;
+                            case "3":
+                                docType = DocumentType.RichText;
+                                break;
+                            default:
+                                Console.WriteLine("Invalid choice. Defaulting to PlainText.");
+                                docType = DocumentType.PlainText;
+                                break;
+                        }
+                        currentDocument = DocumentManager.CreateNewDocument(docType);
+                        Console.WriteLine($"New {docType} document created.");
                         Console.WriteLine("Press any key to continue...");
                         Console.ReadKey();
                         break;
@@ -50,11 +77,8 @@ class Program
                         string openPath = Console.ReadLine();
                         if (File.Exists(openPath))
                         {
-                            string fileContent = File.ReadAllText(openPath);
-                            currentDocument = new Document();
-                            currentDocument.AppendText(fileContent);
-                            currentDocument.FilePath = openPath;
-                            Console.WriteLine($"Document loaded. Content:\n{currentDocument.GetDisplayText()}");
+                            currentDocument = DocumentManager.OpenDocument(openPath);
+                            Console.WriteLine($"Document loaded. Type: {currentDocument.Type}, Content:\n{currentDocument.GetDisplayText()}");
                         }
                         else
                         {
@@ -73,7 +97,8 @@ class Program
                         {
                             Console.Write("Enter text to append (use **bold**, __underline__, *italic*): ");
                             string appendText = Console.ReadLine();
-                            currentDocument.AppendText(appendText);
+                            ICommand appendCommand = new AppendTextCommand(currentDocument, appendText);
+                            undoRedoManager.ExecuteCommand(appendCommand);
                             Console.WriteLine("Text appended.");
                         }
                         Console.WriteLine("Press any key to continue...");
@@ -91,7 +116,8 @@ class Program
                             int insertPos = int.Parse(Console.ReadLine());
                             Console.Write("Enter text to insert (use **bold**, __underline__, *italic*): ");
                             string insertText = Console.ReadLine();
-                            currentDocument.InsertText(insertPos, insertText);
+                            ICommand insertCommand = new InsertTextCommand(currentDocument, insertPos, insertText);
+                            undoRedoManager.ExecuteCommand(insertCommand);
                             Console.WriteLine("Text inserted.");
                         }
                         Console.WriteLine("Press any key to continue...");
@@ -109,7 +135,8 @@ class Program
                             int deleteStart = int.Parse(Console.ReadLine());
                             Console.Write("Enter number of fragments to delete: ");
                             int deleteCount = int.Parse(Console.ReadLine());
-                            currentDocument.DeleteText(deleteStart, deleteCount);
+                            ICommand deleteCommand = new DeleteTextCommand(currentDocument, deleteStart, deleteCount);
+                            undoRedoManager.ExecuteCommand(deleteCommand);
                             Console.WriteLine("Text deleted.");
                         }
                         Console.WriteLine("Press any key to continue...");
@@ -156,7 +183,7 @@ class Program
                             {
                                 savePath = currentDocument.FilePath;
                             }
-                            File.WriteAllText(savePath, currentDocument.GetOriginalText());
+                            DocumentManager.SaveDocument(currentDocument, savePath);
                             if (string.IsNullOrEmpty(currentDocument.FilePath))
                             {
                                 currentDocument.FilePath = savePath;
@@ -188,6 +215,20 @@ class Program
                         break;
 
                     case "9":
+                        undoRedoManager.Undo();
+                        Console.WriteLine("Undo performed.");
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
+                        break;
+
+                    case "10":
+                        undoRedoManager.Redo();
+                        Console.WriteLine("Redo performed.");
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
+                        break;
+
+                    case "11":
                         running = false;
                         Console.WriteLine("Exiting program.");
                         Console.WriteLine("Press any key to continue...");
@@ -195,7 +236,7 @@ class Program
                         break;
 
                     default:
-                        Console.WriteLine("Invalid choice. Please enter a number between 1 and 10.");
+                        Console.WriteLine("Invalid choice. Please enter a number between 1 and 11.");
                         Console.WriteLine("Press any key to continue...");
                         Console.ReadKey();
                         break;
