@@ -23,6 +23,8 @@ namespace Lab2.Classes
 
         public void Execute()
         {
+            if (!Session.PermissionStrategy.CanEdit())
+                throw new InvalidOperationException("You don't have permission to edit.");
             _document.AppendText(_text);
         }
 
@@ -50,6 +52,8 @@ namespace Lab2.Classes
 
         public void Execute()
         {
+            if (!Session.PermissionStrategy.CanEdit())
+                throw new InvalidOperationException("You don't have permission to edit.");
             _document.InsertText(_charPosition, _text);
         }
 
@@ -77,6 +81,8 @@ namespace Lab2.Classes
 
         public void Execute()
         {
+            if (!Session.PermissionStrategy.CanEdit())
+                throw new InvalidOperationException("You don't have permission to edit.");
             _document.DeleteText(_fragmentStart, _fragmentCount);
         }
 

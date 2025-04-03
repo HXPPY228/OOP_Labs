@@ -9,17 +9,47 @@ using Lab2.Enums;
 
 class Program
 {
-    static void Main(string[] args)
+    static private void PressAnyButton()
+    {
+        Console.WriteLine("Press any key to continue...");
+        Console.ReadKey();
+    }
+    static async Task Main(string[] args)
     {
         Document currentDocument = null;
         UndoRedoManager undoRedoManager = new UndoRedoManager();
-        bool running = true;
+        bool running = true, entry = true;
+
+        while (entry)
+        {
+            Console.WriteLine("Select user to login:");
+            for (int i = 0; i < UserManager.Users.Count; i++)
+            {
+                Console.WriteLine($"{i + 1}. {UserManager.Users[i].Name} ({UserManager.Users[i].Role})");
+            }
+            Console.Write("Enter choice (1-4): ");
+
+            if (int.TryParse(Console.ReadLine(), out int userChoice) && userChoice >= 1 && userChoice <= 4)
+            {
+                Session.Login(UserManager.Users[userChoice - 1]);
+                Console.WriteLine($"Logged in as: {Session.CurrentUser.Name}");
+                PressAnyButton();
+                entry = false;
+            }
+            else
+            {
+                Console.WriteLine("Invalid choice. Exiting.");
+                PressAnyButton();
+                Console.Clear();
+            }
+        }
 
         while (running)
         {
             Console.Clear();
             Console.WriteLine("Document Management System");
             Console.WriteLine("------------------------");
+            Console.WriteLine($"Current User: {Session.CurrentUser.Name} | Role: {Session.CurrentUser.Role}");
             Console.WriteLine("Current Document: " + (currentDocument?.FilePath ?? "None"));
             Console.WriteLine("Current Document type: " + (currentDocument != null ? currentDocument.Type.ToString() : "None"));
             Console.WriteLine("Content: " + (currentDocument?.GetDisplayText() ?? "No content"));
@@ -35,7 +65,10 @@ class Program
             Console.WriteLine("9. Undo");
             Console.WriteLine("10. Redo");
             Console.WriteLine("11. Exit");
-            Console.Write("\nEnter your choice (1-11): ");
+            Console.WriteLine("=============================");
+            Console.WriteLine("12. Manage Users (Admin only)");
+            Console.WriteLine("13. Switch User");
+            Console.Write("\nEnter your choice (1-13): ");
 
             string choice = Console.ReadLine();
 
@@ -44,6 +77,12 @@ class Program
                 switch (choice)
                 {
                     case "1":
+                        if (!Session.PermissionStrategy.CanEdit())
+                        {
+                            Console.WriteLine("You cant do this action with your role!");
+                            PressAnyButton();
+                            break;
+                        }
                         Console.WriteLine("Select document type:");
                         Console.WriteLine("1. PlainText");
                         Console.WriteLine("2. Markdown");
@@ -67,25 +106,64 @@ class Program
                                 break;
                         }
                         currentDocument = DocumentManager.CreateNewDocument(docType);
+                        currentDocument.Subscribe(Session.CurrentUser);
                         Console.WriteLine($"New {docType} document created.");
-                        Console.WriteLine("Press any key to continue...");
-                        Console.ReadKey();
+                        PressAnyButton();
                         break;
 
                     case "2":
-                        Console.Write("Enter file path to open (e.g., document.txt/json/xml): ");
-                        string openPath = Console.ReadLine();
-                        if (File.Exists(openPath))
+                        Console.WriteLine("Select storage type:");
+                        Console.WriteLine("1. Local File");
+                        Console.WriteLine("2. Supabase Cloud");
+                        var storageChoice = Console.ReadLine();
+
+                        try
                         {
-                            currentDocument = DocumentManager.OpenDocument(openPath);
-                            Console.WriteLine($"Document loaded. Type: {currentDocument.Type}, Content:\n{currentDocument.GetDisplayText()}");
+                            if (storageChoice == "2")
+                            {
+                                // Устанавливаем облачную стратегию
+                                DocumentManager.SetStorageStrategy(new SupabaseStorageStrategy(
+                                    Lab2.DB.GetUrl() ,
+                                    Lab2.DB.GetKey()
+                                ));
+
+                                Console.Write("Enter cloud file name (e.g., document.json): ");
+                                string cloudFileName = Console.ReadLine();
+
+                                currentDocument = await DocumentManager.OpenDocumentDB(cloudFileName);
+                                currentDocument.Subscribe(Session.CurrentUser);
+                                Console.WriteLine($"Loaded from cloud: {cloudFileName}");
+                            }
+                            else
+                            {
+                                Console.Write("Enter local file path (e.g., doc.txt): ");
+                                string localPath = Console.ReadLine();
+
+                                if (!File.Exists(localPath))
+                                    throw new FileNotFoundException("File not found");
+
+                                currentDocument = DocumentManager.OpenDocument(localPath);
+                                currentDocument.Subscribe(Session.CurrentUser);
+                                Console.WriteLine($"Loaded from local storage: {localPath}");
+                            }
+
+                            Console.WriteLine($"Type: {currentDocument.Type}");
+                            Console.WriteLine($"Content:\n{currentDocument.GetDisplayText()}");
                         }
-                        else
+                        catch (FileNotFoundException ex)
                         {
-                            Console.WriteLine("File does not exist.");
+                            Console.WriteLine($"Error: {ex.Message}");
                         }
-                        Console.WriteLine("Press any key to continue...");
-                        Console.ReadKey();
+                        catch (Postgrest.Exceptions.PostgrestException ex)
+                        {
+                            Console.WriteLine($"Supabase error: {ex.Message}");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error: {ex.Message}");
+                        }
+
+                        PressAnyButton();
                         break;
 
                     case "3":
@@ -99,10 +177,8 @@ class Program
                             string appendText = Console.ReadLine();
                             ICommand appendCommand = new AppendTextCommand(currentDocument, appendText);
                             undoRedoManager.ExecuteCommand(appendCommand);
-                            Console.WriteLine("Text appended.");
                         }
-                        Console.WriteLine("Press any key to continue...");
-                        Console.ReadKey();
+                        PressAnyButton();
                         break;
 
                     case "4":
@@ -118,10 +194,8 @@ class Program
                             string insertText = Console.ReadLine();
                             ICommand insertCommand = new InsertTextCommand(currentDocument, insertPos, insertText);
                             undoRedoManager.ExecuteCommand(insertCommand);
-                            Console.WriteLine("Text inserted.");
                         }
-                        Console.WriteLine("Press any key to continue...");
-                        Console.ReadKey();
+                        PressAnyButton();
                         break;
 
                     case "5":
@@ -137,10 +211,8 @@ class Program
                             int deleteCount = int.Parse(Console.ReadLine());
                             ICommand deleteCommand = new DeleteTextCommand(currentDocument, deleteStart, deleteCount);
                             undoRedoManager.ExecuteCommand(deleteCommand);
-                            Console.WriteLine("Text deleted.");
                         }
-                        Console.WriteLine("Press any key to continue...");
-                        Console.ReadKey();
+                        PressAnyButton();
                         break;
 
                     case "6":
@@ -162,44 +234,62 @@ class Program
                                 Console.WriteLine($"'{searchWord}' not found.");
                             }
                         }
-                        Console.WriteLine("Press any key to continue...");
-                        Console.ReadKey();
+                        PressAnyButton();
                         break;
 
                     case "7":
+                        if (!Session.PermissionStrategy.CanEdit())
+                        {
+                            Console.WriteLine("You cant do this action with your role!");
+                            PressAnyButton();
+                            break;
+                        }
                         if (currentDocument == null)
                         {
                             Console.WriteLine("No document loaded. Create or open a document first.");
                         }
                         else
                         {
-                            string savePath;
-                            if (string.IsNullOrEmpty(currentDocument.FilePath))
+                            Console.WriteLine("Select storage type:");
+                            Console.WriteLine("1. Local File");
+                            Console.WriteLine("2. Supabase Cloud");
+                            var storageChoice1 = Console.ReadLine();
+
+                            IStorageStrategy strategy = storageChoice1 switch
                             {
-                                Console.Write("Enter file path to save (e.g., document.txt/json/xml): ");
-                                savePath = Console.ReadLine();
-                            }
-                            else
-                            {
-                                savePath = currentDocument.FilePath;
-                            }
-                            DocumentManager.SaveDocument(currentDocument, savePath);
-                            if (string.IsNullOrEmpty(currentDocument.FilePath))
-                            {
-                                currentDocument.FilePath = savePath;
-                            }
-                            Console.WriteLine($"Document saved to: {savePath}");
+                                "1" => new LocalFileStrategy(),
+                                "2" => new SupabaseStorageStrategy(
+                                    Lab2.DB.GetUrl(),
+                                    Lab2.DB.GetKey()),
+                                _ => throw new ArgumentException("Invalid storage type")
+                            };
+
+                            DocumentManager.SetStorageStrategy(strategy);
+
+                            Console.Write("Enter file name to save: ");
+                            string fileName = Console.ReadLine();
+
+                            currentDocument.FilePath = fileName;
+
+                            await DocumentManager.SaveDocumentDB(currentDocument, fileName);
+                            PressAnyButton();
+                            break;
                         }
-                        Console.WriteLine("Press any key to continue...");
-                        Console.ReadKey();
+                        PressAnyButton();
                         break;
 
                     case "8":
+                        if (!Session.PermissionStrategy.CanEdit())
+                        {
+                            Console.WriteLine("You cant do this action with your role!");
+                            PressAnyButton();
+                            break;
+                        }
                         Console.Write("Enter file path to delete: ");
                         string deletePath = Console.ReadLine();
                         if (File.Exists(deletePath))
                         {
-                            File.Delete(deletePath);
+                            DocumentManager.DeleteDocument(deletePath);
                             if (currentDocument != null && currentDocument.FilePath == deletePath)
                             {
                                 currentDocument = null;
@@ -210,43 +300,129 @@ class Program
                         {
                             Console.WriteLine("File does not exist.");
                         }
-                        Console.WriteLine("Press any key to continue...");
-                        Console.ReadKey();
+                        PressAnyButton();
                         break;
 
                     case "9":
+                        if (!Session.PermissionStrategy.CanEdit())
+                        {
+                            Console.WriteLine("You cant do this action with your role!");
+                            PressAnyButton();
+                            break;
+                        }
                         undoRedoManager.Undo();
                         Console.WriteLine("Undo performed.");
-                        Console.WriteLine("Press any key to continue...");
-                        Console.ReadKey();
+                        PressAnyButton();
                         break;
 
                     case "10":
+                        if (!Session.PermissionStrategy.CanEdit())
+                        {
+                            Console.WriteLine("You cant do this action with your role!");
+                            PressAnyButton();
+                            break;
+                        }
                         undoRedoManager.Redo();
                         Console.WriteLine("Redo performed.");
-                        Console.WriteLine("Press any key to continue...");
-                        Console.ReadKey();
+                        PressAnyButton();
                         break;
 
                     case "11":
                         running = false;
                         Console.WriteLine("Exiting program.");
-                        Console.WriteLine("Press any key to continue...");
-                        Console.ReadKey();
+                        PressAnyButton();
+                        break;
+                    case "12":
+                        if (!Session.PermissionStrategy.CanManageUsers())
+                        {
+                            Console.WriteLine("Access denied!");
+                            PressAnyButton();
+                            break;
+                        }
+                        Console.WriteLine("Access granted!");
+                        Console.WriteLine("Список пользователей:");
+                        for (int i = 0; i < UserManager.Users.Count; i++)
+                        {
+                            Console.WriteLine($"{i + 1}. {UserManager.Users[i].Name} ({UserManager.Users[i].Role})");
+                        }
+
+                        Console.Write("\nВведите номер пользователя для изменения: ");
+                        if (!int.TryParse(Console.ReadLine(), out int userNumber) ||
+                            userNumber < 1 ||
+                            userNumber > UserManager.Users.Count)
+                        {
+                            Console.WriteLine("Некорректный номер пользователя!");
+                            PressAnyButton();
+                            break;
+                        }
+
+                        var selectedUser = UserManager.Users[userNumber - 1];
+
+                        Console.WriteLine("Доступные роли:");
+                        var roles = Enum.GetValues(typeof(UserRole)).Cast<UserRole>().ToList();
+                        for (int i = 0; i < roles.Count; i++)
+                        {
+                            Console.WriteLine($"{i + 1}. {roles[i]}");
+                        }
+
+                        Console.Write("Выберите номер новой роли: ");
+                        if (!int.TryParse(Console.ReadLine(), out int roleNumber) ||
+                            roleNumber < 1 ||
+                            roleNumber > roles.Count)
+                        {
+                            Console.WriteLine("Некорректный номер роли!");
+                            PressAnyButton();
+                            break;
+                        }
+
+                        UserManager.UpdateUserRole(selectedUser.Name, roles[roleNumber - 1]);
+                        Console.WriteLine($"Роль пользователя {selectedUser.Name} успешно изменена на {roles[roleNumber - 1]}!");
+                        PressAnyButton();
+                        break;
+                    case "13":
+                        currentDocument = null;
+                        undoRedoManager = new UndoRedoManager();
+                        entry = true;
+                        running = true;
+
+                        while (entry)
+                        {
+                            Console.Clear();
+                            Console.WriteLine("Select user to login:");
+                            for (int i = 0; i < UserManager.Users.Count; i++)
+                            {
+                                Console.WriteLine($"{i + 1}. {UserManager.Users[i].Name} ({UserManager.Users[i].Role})");
+                            }
+                            Console.Write("Enter choice (1-4): ");
+
+                            if (int.TryParse(Console.ReadLine(), out int newUserChoice) &&
+                                newUserChoice >= 1 &&
+                                newUserChoice <= UserManager.Users.Count)
+                            {
+                                Session.Login(UserManager.Users[newUserChoice - 1]);
+                                Console.WriteLine($"Logged in as: {Session.CurrentUser.Name}");
+                                PressAnyButton();
+                                entry = false;
+                            }
+                            else
+                            {
+                                Console.WriteLine("Invalid choice. Try again.");
+                                PressAnyButton();
+                            }
+                        }
                         break;
 
+
                     default:
-                        Console.WriteLine("Invalid choice. Please enter a number between 1 and 11.");
-                        Console.WriteLine("Press any key to continue...");
-                        Console.ReadKey();
+                        Console.WriteLine("Invalid choice. Please enter a number between 1 and 13.");
+                        PressAnyButton();
                         break;
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error: {ex.Message}");
-                Console.WriteLine("Press any key to continue...");
-                Console.ReadKey();
+                PressAnyButton();
             }
         }
     }

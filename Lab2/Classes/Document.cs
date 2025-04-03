@@ -8,6 +8,7 @@ using Lab2.Classes;
 using Lab2.Enums;
 using Newtonsoft.Json;
 using System.Xml.Serialization;
+using System.Reflection.Metadata;
 
 namespace Lab2.Documentn
 {
@@ -28,8 +29,13 @@ namespace Lab2.Documentn
         {
             var newFragments = TextParser.Parse(text, Type);
             _fragments.AddRange(newFragments);
+            Notify($"!!! Document updated: text appended. !!!");
         }
-
+        public void AppendTextNoNotify(string text)
+        {
+            var newFragments = TextParser.Parse(text, Type);
+            _fragments.AddRange(newFragments);
+        }
         public void InsertText(int charPosition, string text)
         {
             if (charPosition < 0 || charPosition > GetTextWithoutMarkersLength())
@@ -108,6 +114,7 @@ namespace Lab2.Documentn
                     {
                         _fragments.Insert(i + 1 + newFragments.Count, rightFragment);
                     }
+                    Notify($"!!! Document updated: Some text inserted. !!!");
                     return;
                 }
                 currentPos += fragmentLength;
@@ -121,6 +128,7 @@ namespace Lab2.Documentn
                 throw new ArgumentOutOfRangeException("Invalid start or count.");
             }
             _fragments.RemoveRange(fragmentStart, fragmentCount);
+            Notify($"!!! Document updated: Some text deleted. !!!");
         }
 
         public List<int> SearchWord(string word)
@@ -170,6 +178,31 @@ namespace Lab2.Documentn
             // Удаляем маркеры **, __, * из текста
             return text.Replace("**", "").Replace("__", "").Replace("*", "");
         }
+
+        private List<IObserver> _observers = new List<IObserver>();
+
+        public void Subscribe(IObserver observer) => _observers.Add(observer);
+        public void Unsubscribe(IObserver observer) => _observers.Remove(observer);
+
+        public void Notify(string message)
+        {
+            var fullMessage = $"{message}\nFile: {FilePath}";
+
+            foreach (var observer in _observers)
+            {
+                observer.Update(fullMessage);
+            }
+
+            foreach (var admin in UserManager.GetAdmins())
+            {
+                // Чтобы избежать дублей, если админ уже подписан
+                if (!_observers.Contains(admin))
+                {
+                    admin.Update($"[ADMIN OVERRIDE] {fullMessage}");
+                }
+            }
+        }
+
     }
     public class DocumentData
     {
@@ -191,7 +224,7 @@ namespace Lab2.Documentn
             {
                 string content = File.ReadAllText(path);
                 Document doc = new Document(DocumentType.PlainText);
-                doc.AppendText(content);
+                doc.AppendTextNoNotify(content);
                 doc.FilePath = path;
                 return doc;
             }
@@ -200,7 +233,7 @@ namespace Lab2.Documentn
                 string json = File.ReadAllText(path);
                 DocumentData data = JsonConvert.DeserializeObject<DocumentData>(json);
                 Document doc = new Document(data.Type);
-                doc.AppendText(data.Content);
+                doc.AppendTextNoNotify(data.Content);
                 doc.FilePath = path;
                 return doc;
             }
@@ -211,7 +244,7 @@ namespace Lab2.Documentn
                     var serializer = new XmlSerializer(typeof(DocumentData));
                     DocumentData data = (DocumentData)serializer.Deserialize(reader);
                     Document doc = new Document(data.Type);
-                    doc.AppendText(data.Content);
+                    doc.AppendTextNoNotify(data.Content);
                     doc.FilePath = path;
                     return doc;
                 }
@@ -246,12 +279,15 @@ namespace Lab2.Documentn
                 throw new ArgumentException("Unsupported file format");
             }
             document.FilePath = path;
+            document.Notify($"!!! Document saved to: {path} !!!");
         }
 
         public static void DeleteDocument(string path)
         {
             if (File.Exists(path))
             {
+                var document = OpenDocument(path);
+                document.Notify($"!!! Document deleted: {path} !!!");
                 File.Delete(path);
             }
             else
@@ -260,20 +296,39 @@ namespace Lab2.Documentn
             }
         }
 
-        private static string GetFormatFromPath(string path)
+        private static IStorageStrategy _storageStrategy = new LocalFileStrategy();
+        public static void SetStorageStrategy(IStorageStrategy strategy)
         {
-            string extension = Path.GetExtension(path).ToLower();
-            switch (extension)
+            _storageStrategy = strategy;
+        }
+
+        public static async Task SaveDocumentDB(Document document, string fileName)
+        {
+            await _storageStrategy.SaveDocument(document.GetOriginalText(), fileName);
+            document.Notify($"!!! Document saved to: {fileName} !!!");
+        }
+
+        public static async Task<Document> OpenDocumentDB(string fileName)
+        {
+            var content = await _storageStrategy.LoadDocument(fileName);
+
+            if (string.IsNullOrEmpty(content))
+                throw new FileNotFoundException("Document not found in storage");
+
+            // Определяем тип документа по расширению файла
+            var docType = Path.GetExtension(fileName).ToLower() switch
             {
-                case ".txt":
-                    return "txt";
-                case ".json":
-                    return "json";
-                case ".xml":
-                    return "xml";
-                default:
-                    throw new ArgumentException("Unsupported file extension");
-            }
+                ".txt" => DocumentType.PlainText,
+                ".json" => DocumentType.Markdown,
+                ".xml" => DocumentType.RichText,
+                _ => DocumentType.PlainText
+            };
+
+            var doc = new Document(docType);
+            doc.AppendTextNoNotify(content);
+            doc.FilePath = $"[CLOUD]:{fileName}";
+
+            return doc;
         }
     }
 }
