@@ -17,7 +17,7 @@ namespace Lab2.Documentn
         public List<ITextFragment> _fragments;
         public string FilePath { get; set; }
         public DocumentType Type { get; set; }
-
+        private readonly DocumentHistory _history = new DocumentHistory();
         public Document(DocumentType type)
         {
             _fragments = new List<ITextFragment>();
@@ -27,6 +27,8 @@ namespace Lab2.Documentn
 
         public void AppendText(string text)
         {
+            var beforeContent = GetOriginalText();
+            _history.AddEntry("APPEND", beforeContent);
             var newFragments = TextParser.Parse(text, Type);
             _fragments.AddRange(newFragments);
             Notify($"!!! Document updated: text appended. !!!");
@@ -43,10 +45,12 @@ namespace Lab2.Documentn
                 throw new ArgumentOutOfRangeException("Character position is out of range.");
             }
 
+            var beforeContent = GetOriginalText();
             var newFragments = TextParser.Parse(text, Type);
             if (charPosition == GetTextWithoutMarkersLength())
             {
                 _fragments.AddRange(newFragments);
+                _history.AddEntry("INSERT", beforeContent);
                 return;
             }
 
@@ -114,6 +118,7 @@ namespace Lab2.Documentn
                     {
                         _fragments.Insert(i + 1 + newFragments.Count, rightFragment);
                     }
+                    _history.AddEntry("INSERT", beforeContent);
                     Notify($"!!! Document updated: Some text inserted. !!!");
                     return;
                 }
@@ -127,8 +132,10 @@ namespace Lab2.Documentn
             {
                 throw new ArgumentOutOfRangeException("Invalid start or count.");
             }
+            var beforeContent = GetOriginalText();
             _fragments.RemoveRange(fragmentStart, fragmentCount);
             Notify($"!!! Document updated: Some text deleted. !!!");
+            _history.AddEntry("INSERT", beforeContent);
         }
 
         public List<int> SearchWord(string word)
@@ -202,7 +209,10 @@ namespace Lab2.Documentn
                 }
             }
         }
-
+        public IEnumerable<DocumentSnapshot> GetHistory()
+        {
+            return _history.GetHistory();
+        }
     }
     public class DocumentData
     {

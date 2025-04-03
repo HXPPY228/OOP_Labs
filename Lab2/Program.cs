@@ -48,7 +48,7 @@ class Program
         {
             Console.Clear();
             Console.WriteLine("Document Management System");
-            Console.WriteLine("------------------------");
+            Console.WriteLine("--------------------------");
             Console.WriteLine($"Current User: {Session.CurrentUser.Name} | Role: {Session.CurrentUser.Role}");
             Console.WriteLine("Current Document: " + (currentDocument?.FilePath ?? "None"));
             Console.WriteLine("Current Document type: " + (currentDocument != null ? currentDocument.Type.ToString() : "None"));
@@ -68,7 +68,9 @@ class Program
             Console.WriteLine("=============================");
             Console.WriteLine("12. Manage Users (Admin only)");
             Console.WriteLine("13. Switch User");
-            Console.Write("\nEnter your choice (1-13): ");
+            Console.WriteLine("14. Terminal Settings");
+            Console.WriteLine("15. View Document History");
+            Console.Write("\nEnter your choice (1-15): ");
 
             string choice = Console.ReadLine();
 
@@ -411,10 +413,39 @@ class Program
                             }
                         }
                         break;
+                    case "14":
+                        if (!Session.PermissionStrategy.CanView())
+                        {
+                            Console.WriteLine("Доступ запрещён!");
+                            break;
+                        }
+                        TerminalSettingsManager.Instance.ShowTerminalSettingsMenu();
+                        PressAnyButton();
+                        break;
 
+                    case "15":
+                        if (currentDocument == null)
+                        {
+                            Console.WriteLine("No document loaded!");
+                            break;
+                        }
+
+                        Console.WriteLine("\nDocument History:");
+                        Console.WriteLine("{0,-25} {1,-10} {2,-50}",
+                            "Timestamp", "Action", "Content Preview");
+
+                        foreach (var entry1 in currentDocument.GetHistory())
+                        {
+                            Console.WriteLine("{0,-25} {1,-10} {2,-50}",
+                                entry1.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
+                                entry1.ActionType,
+                                entry1.Content.Truncate(45));
+                        }
+                        PressAnyButton();
+                        break;
 
                     default:
-                        Console.WriteLine("Invalid choice. Please enter a number between 1 and 13.");
+                        Console.WriteLine("Invalid choice. Please enter a number between 1 and 14.");
                         PressAnyButton();
                         break;
                 }
