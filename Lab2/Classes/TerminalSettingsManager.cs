@@ -67,7 +67,7 @@ namespace Lab2.Classes
             }
         }
 
-        private int GetCurrentFontSize()
+        public int GetCurrentFontSize()
         {
             var json = JObject.Parse(File.ReadAllText(SettingsPath));
             return (int)json["profiles"]["defaults"]["font"]["size"];

@@ -16,7 +16,7 @@ namespace Lab2.Classes
 
             if (type == DocumentType.PlainText)
             {
-                fragments.Add(new PlainTextFragment(text));
+                return new List<ITextFragment> { new PlainTextFragment(text) };
             }
             else
             {

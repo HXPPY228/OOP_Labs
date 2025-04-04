@@ -16,7 +16,7 @@ namespace Lab2.Classes
 
         public AppendTextCommand(Document document, string text)
         {
-            _document = document;
+            _document = document ?? throw new ArgumentNullException(nameof(document));
             _text = text;
             _previousFragments = new List<ITextFragment>(_document._fragments);
         }
