@@ -17,7 +17,7 @@ namespace Lab2.Documentn
         public List<ITextFragment> _fragments;
         public string FilePath { get; set; }
         public DocumentType Type { get; set; }
-        private readonly DocumentHistory _history = new DocumentHistory();
+        public readonly DocumentHistory _history = new DocumentHistory();
         public Document(DocumentType type)
         {
             _fragments = new List<ITextFragment>();
@@ -226,7 +226,7 @@ namespace Lab2.Documentn
         {
             return new Document(type);
         }
-
+        public static List<ITextFragment> Clipboard { get; set; } = new List<ITextFragment>();
         public static Document OpenDocument(string path)
         {
             string format = Path.GetExtension(path).ToLower().TrimStart('.');

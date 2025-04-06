@@ -59,18 +59,21 @@ class Program
             Console.WriteLine("3. Append Text");
             Console.WriteLine("4. Insert Text");
             Console.WriteLine("5. Delete Text");
-            Console.WriteLine("6. Search Word");
-            Console.WriteLine("7. Save Document");
-            Console.WriteLine("8. Delete Document");
-            Console.WriteLine("9. Undo");
-            Console.WriteLine("10. Redo");
-            Console.WriteLine("11. Exit");
+            Console.WriteLine("6. Copy Text");
+            Console.WriteLine("7. Cut Text");
+            Console.WriteLine("8. Paste Text");
+            Console.WriteLine("9. Search Word");
+            Console.WriteLine("10. Save Document");
+            Console.WriteLine("11. Delete Document");
+            Console.WriteLine("12. Undo");
+            Console.WriteLine("13. Redo");
+            Console.WriteLine("14. Exit");
             Console.WriteLine("=============================");
-            Console.WriteLine("12. Manage Users (Admin only)");
-            Console.WriteLine("13. Switch User");
-            Console.WriteLine("14. Terminal Settings");
-            Console.WriteLine("15. View Document History");
-            Console.Write("\nEnter your choice (1-15): ");
+            Console.WriteLine("15. Manage Users (Admin only)");
+            Console.WriteLine("16. Switch User");
+            Console.WriteLine("17. Terminal Settings");
+            Console.WriteLine("18. View Document History");
+            Console.Write("\nEnter your choice (1-18): ");
 
             string choice = Console.ReadLine();
 
@@ -224,6 +227,57 @@ class Program
                         }
                         else
                         {
+                            Console.Write("Enter start fragment index to copy: ");
+                            int copyStart = int.Parse(Console.ReadLine());
+                            Console.Write("Enter number of fragments to copy: ");
+                            int copyCount = int.Parse(Console.ReadLine());
+                            ICommand copyCommand = new CopyTextCommand(currentDocument, copyStart, copyCount);
+                            undoRedoManager.ExecuteCommand(copyCommand);
+                            Console.WriteLine("Text copied to clipboard.");
+                        }
+                        PressAnyButton();
+                        break;
+
+                    case "7":
+                        if (currentDocument == null)
+                        {
+                            Console.WriteLine("No document loaded. Create or open a document first.");
+                        }
+                        else
+                        {
+                            Console.Write("Enter start fragment index to cut: ");
+                            int cutStart = int.Parse(Console.ReadLine());
+                            Console.Write("Enter number of fragments to cut: ");
+                            int cutCount = int.Parse(Console.ReadLine());
+                            ICommand cutCommand = new CutTextCommand(currentDocument, cutStart, cutCount);
+                            undoRedoManager.ExecuteCommand(cutCommand);
+                            Console.WriteLine("Text cut to clipboard.");
+                        }
+                        PressAnyButton();
+                        break;
+
+                    case "8":
+                        if (currentDocument == null)
+                        {
+                            Console.WriteLine("No document loaded. Create or open a document first.");
+                        }
+                        else
+                        {
+                            Console.Write("Enter fragment position to paste at: ");
+                            int pastePos = int.Parse(Console.ReadLine());
+                            ICommand pasteCommand = new PasteTextCommand(currentDocument, pastePos);
+                            undoRedoManager.ExecuteCommand(pasteCommand);
+                            Console.WriteLine("Text pasted from clipboard.");
+                        }
+                        PressAnyButton();
+                        break;
+                    case "9":
+                        if (currentDocument == null)
+                        {
+                            Console.WriteLine("No document loaded. Create or open a document first.");
+                        }
+                        else
+                        {
                             Console.Write("Enter word to search (positions ignore **, __, *): ");
                             string searchWord = Console.ReadLine();
                             List<int> positions = currentDocument.SearchWord(searchWord);
@@ -239,7 +293,7 @@ class Program
                         PressAnyButton();
                         break;
 
-                    case "7":
+                    case "10":
                         if (!Session.PermissionStrategy.CanEdit())
                         {
                             Console.WriteLine("You cant do this action with your role!");
@@ -273,14 +327,21 @@ class Program
 
                             currentDocument.FilePath = fileName;
 
-                            await DocumentManager.SaveDocumentDB(currentDocument, fileName);
+                            if (strategy is LocalFileStrategy)
+                            {
+                                DocumentManager.SaveDocument(currentDocument, fileName);
+                            }
+                            else if (strategy is SupabaseStorageStrategy)
+                            {
+                                await DocumentManager.SaveDocumentDB(currentDocument, fileName);
+                            }
                             PressAnyButton();
                             break;
                         }
                         PressAnyButton();
                         break;
 
-                    case "8":
+                    case "11":
                         if (!Session.PermissionStrategy.CanEdit())
                         {
                             Console.WriteLine("You cant do this action with your role!");
@@ -305,7 +366,7 @@ class Program
                         PressAnyButton();
                         break;
 
-                    case "9":
+                    case "12":
                         if (!Session.PermissionStrategy.CanEdit())
                         {
                             Console.WriteLine("You cant do this action with your role!");
@@ -317,7 +378,7 @@ class Program
                         PressAnyButton();
                         break;
 
-                    case "10":
+                    case "13":
                         if (!Session.PermissionStrategy.CanEdit())
                         {
                             Console.WriteLine("You cant do this action with your role!");
@@ -329,12 +390,12 @@ class Program
                         PressAnyButton();
                         break;
 
-                    case "11":
+                    case "14":
                         running = false;
                         Console.WriteLine("Exiting program.");
                         PressAnyButton();
                         break;
-                    case "12":
+                    case "15":
                         if (!Session.PermissionStrategy.CanManageUsers())
                         {
                             Console.WriteLine("Access denied!");
@@ -381,7 +442,7 @@ class Program
                         Console.WriteLine($"Роль пользователя {selectedUser.Name} успешно изменена на {roles[roleNumber - 1]}!");
                         PressAnyButton();
                         break;
-                    case "13":
+                    case "16":
                         currentDocument = null;
                         undoRedoManager = new UndoRedoManager();
                         entry = true;
@@ -413,7 +474,7 @@ class Program
                             }
                         }
                         break;
-                    case "14":
+                    case "17":
                         if (!Session.PermissionStrategy.CanView())
                         {
                             Console.WriteLine("Доступ запрещён!");
@@ -423,7 +484,7 @@ class Program
                         PressAnyButton();
                         break;
 
-                    case "15":
+                    case "18":
                         if (currentDocument == null)
                         {
                             Console.WriteLine("No document loaded!");
