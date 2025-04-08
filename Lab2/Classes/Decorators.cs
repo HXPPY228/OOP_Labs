@@ -74,8 +74,8 @@ namespace Lab2.Classes
 
         public override string GetText()
         {
-            //return $"\x1b[3m{_fragment.GetText()}\x1b[0m"; // ANSI code for italic
-            return $"/{_fragment.GetText()}/";
+            return $"\x1b[3m{_fragment.GetText()}\x1b[0m"; // ANSI code for italic
+            //return $"/{_fragment.GetText()}/";
         }
 
         public override string GetOriginalText()

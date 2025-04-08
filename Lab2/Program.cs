@@ -10,6 +10,26 @@ using System.Text;
 
 class Program
 {
+    static void DisplayFragments(Document doc)
+    {
+        if (doc != null && doc._fragments != null && doc._fragments.Count > 0)
+        {
+            Console.WriteLine("Current fragments:");
+            for (int i = 0; i < doc._fragments.Count; i++)
+            {
+                string fragmentText = doc._fragments[i].GetText();
+                if (fragmentText == "\n")
+                {
+                    fragmentText = "[Newline]";
+                }
+                Console.WriteLine($"{i}: {fragmentText}");
+            }
+        }
+        else
+        {
+            Console.WriteLine("No fragments available or no document loaded.");
+        }
+    }
     static private void PressAnyButton()
     {
         Console.WriteLine("Press any key to continue...");
@@ -230,6 +250,7 @@ class Program
                         }
                         else
                         {
+                            DisplayFragments(currentDocument);
                             Console.Write("Enter start fragment index to delete: ");
                             int deleteStart = int.Parse(Console.ReadLine());
                             Console.Write("Enter number of fragments to delete: ");
@@ -247,6 +268,7 @@ class Program
                         }
                         else
                         {
+                            DisplayFragments(currentDocument);
                             Console.Write("Enter start fragment index to copy: ");
                             int copyStart = int.Parse(Console.ReadLine());
                             Console.Write("Enter number of fragments to copy: ");
@@ -265,6 +287,7 @@ class Program
                         }
                         else
                         {
+                            DisplayFragments(currentDocument);
                             Console.Write("Enter start fragment index to cut: ");
                             int cutStart = int.Parse(Console.ReadLine());
                             Console.Write("Enter number of fragments to cut: ");
@@ -283,6 +306,7 @@ class Program
                         }
                         else
                         {
+                            DisplayFragments(currentDocument);
                             Console.Write("Enter fragment position to paste at: ");
                             int pastePos = int.Parse(Console.ReadLine());
                             ICommand pasteCommand = new PasteTextCommand(currentDocument, pastePos);
@@ -298,7 +322,7 @@ class Program
                         }
                         else
                         {
-                            Console.Write("Enter word to search (positions ignore **, __, *): ");
+                            Console.Write("Enter word to search (ignore **, __, *): ");
                             string searchWord = Console.ReadLine();
                             List<int> positions = currentDocument.SearchWord(searchWord);
                             if (positions.Count > 0)
@@ -368,7 +392,7 @@ class Program
                             PressAnyButton();
                             break;
                         }
-                        Console.Write("Enter file path to delete: ");
+                        Console.Write("Enter filename to delete: ");
                         string deletePath = Console.ReadLine();
                         if (File.Exists(deletePath))
                         {

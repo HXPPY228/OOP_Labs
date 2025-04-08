@@ -24,7 +24,6 @@ namespace Lab2.Documentn
             FilePath = string.Empty;
             Type = type;
         }
-
         public void AppendText(string text)
         {
             var beforeContent = GetOriginalText();
