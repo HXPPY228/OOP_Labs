@@ -6,6 +6,7 @@ using Lab2.Interfaces;
 using Lab2.Classes;
 using Lab2.Documentn;
 using Lab2.Enums;
+using System.Text;
 
 class Program
 {
@@ -52,7 +53,20 @@ class Program
             Console.WriteLine($"Current User: {Session.CurrentUser.Name} | Role: {Session.CurrentUser.Role}");
             Console.WriteLine("Current Document: " + (currentDocument?.FilePath ?? "None"));
             Console.WriteLine("Current Document type: " + (currentDocument != null ? currentDocument.Type.ToString() : "None"));
-            Console.WriteLine("Content: " + (currentDocument?.GetDisplayText() ?? "No content"));
+            Console.WriteLine("Content:");
+            if (currentDocument != null)
+            {
+                string formattedText = TextFormatter.FormatText(currentDocument.GetDisplayText(), currentDocument.Type.ToString());
+                string[] lines = formattedText.Split('\n');
+                foreach (var line in lines)
+                {
+                    Console.WriteLine("  " + line.TrimEnd('\r'));
+                }
+            }
+            else
+            {
+                Console.WriteLine("No content");
+            }
             Console.WriteLine("\nOptions:");
             Console.WriteLine("1. Create New Document");
             Console.WriteLine("2. Open Document");
@@ -178,8 +192,14 @@ class Program
                         }
                         else
                         {
-                            Console.Write("Enter text to append (use **bold**, __underline__, *italic*): ");
-                            string appendText = Console.ReadLine();
+                            Console.WriteLine("Enter text to append (use **bold**, __underline__, *italic*, #, ##, ###). Type 'END' on a new line to finish:");
+                            StringBuilder inputBuilder = new StringBuilder();
+                            string line;
+                            while ((line = Console.ReadLine()) != "END")
+                            {
+                                inputBuilder.AppendLine(line);
+                            }
+                            string appendText = inputBuilder.ToString().TrimEnd();
                             ICommand appendCommand = new AppendTextCommand(currentDocument, appendText);
                             undoRedoManager.ExecuteCommand(appendCommand);
                         }

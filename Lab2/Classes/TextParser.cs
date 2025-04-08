@@ -13,14 +13,31 @@ namespace Lab2.Classes
         public static List<ITextFragment> Parse(string text, DocumentType type)
         {
             var fragments = new List<ITextFragment>();
+            var lines = text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (i > 0)
+                {
+                    fragments.Add(new NewlineFragment());
+                }
+                if (!string.IsNullOrEmpty(lines[i]))
+                {
+                    fragments.AddRange(ParseLine(lines[i], type));
+                }
+            }
+            return fragments;
+        }
 
+        private static List<ITextFragment> ParseLine(string line, DocumentType type)
+        {
+            var fragments = new List<ITextFragment>();
             if (type == DocumentType.PlainText)
             {
-                return new List<ITextFragment> { new PlainTextFragment(text) };
+                return new List<ITextFragment> { new PlainTextFragment(line) };
             }
             else
             {
-                string remainingText = text;
+                string remainingText = line;
                 while (remainingText.Length > 0)
                 {
                     if (remainingText.StartsWith("**") && remainingText.IndexOf("**", 2) > 2)

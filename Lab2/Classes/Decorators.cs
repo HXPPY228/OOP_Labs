@@ -29,7 +29,7 @@ namespace Lab2.Classes
 
     public abstract class TextDecorator : ITextFragment
     {
-        protected ITextFragment _fragment;
+        public ITextFragment _fragment;
 
         public TextDecorator(ITextFragment fragment)
         {
@@ -82,5 +82,11 @@ namespace Lab2.Classes
         {
             return $"*{_fragment.GetOriginalText()}*";
         }
+    }
+
+    public class NewlineFragment : ITextFragment
+    {
+        public string GetText() => "\n";
+        public string GetOriginalText() => "\n";
     }
 }

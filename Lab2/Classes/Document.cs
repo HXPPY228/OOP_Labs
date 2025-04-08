@@ -42,88 +42,130 @@ namespace Lab2.Documentn
         {
             if (charPosition < 0 || charPosition > GetTextWithoutMarkersLength())
             {
-                throw new ArgumentOutOfRangeException("Character position is out of range.");
+                throw new ArgumentOutOfRangeException("Позиция символа вне допустимого диапазона.");
             }
 
             var beforeContent = GetOriginalText();
             var newFragments = TextParser.Parse(text, Type);
-            if (charPosition == GetTextWithoutMarkersLength())
+
+            if (charPosition == 0)
+            {
+                _fragments.InsertRange(0, newFragments);
+            }
+            else if (charPosition == GetTextWithoutMarkersLength())
             {
                 _fragments.AddRange(newFragments);
-                _history.AddEntry("INSERT", beforeContent);
-                return;
             }
-
-            int currentPos = 0;
-            for (int i = 0; i < _fragments.Count; i++)
+            else
             {
-                string fragmentTextWithoutMarkers = RemoveMarkers(_fragments[i].GetOriginalText());
-                int fragmentLength = fragmentTextWithoutMarkers.Length;
-
-                if (currentPos + fragmentLength > charPosition)
+                int currentPos = 0;
+                for (int i = 0; i < _fragments.Count; i++)
                 {
-                    // Позиция внутри текущего фрагмента
-                    int splitPos = charPosition - currentPos;
-                    string originalText = _fragments[i].GetOriginalText();
-                    string textWithoutMarkers = RemoveMarkers(originalText);
+                    string fragmentTextWithoutMarkers = RemoveMarkers(_fragments[i].GetOriginalText());
+                    int fragmentLength = fragmentTextWithoutMarkers.Length;
 
-                    // Определяем, сколько символов нужно взять из originalText, чтобы получить splitPos символов без маркеров
-                    int plainTextPos = 0;
-                    int splitIndex = 0;
-                    for (int j = 0; j < originalText.Length && plainTextPos < splitPos; j++)
+                    if (charPosition == currentPos)
                     {
-                        if (j + 1 < originalText.Length && (originalText.Substring(j, 2) == "**" || originalText.Substring(j, 2) == "__"))
+                        _fragments.InsertRange(i, newFragments);
+                        _history.AddEntry("INSERT", beforeContent);
+                        Notify($"!!! Документ обновлен: Текст вставлен. !!!");
+                        return;
+                    }
+                    else if (charPosition > currentPos && charPosition < currentPos + fragmentLength)
+                    {
+                        if (_fragments[i] is NewlineFragment)
                         {
-                            j++;
+                            throw new InvalidOperationException("Нельзя вставлять текст внутрь перевода строки.");
                         }
-                        else if (originalText[j] == '*')
+                        int splitPos = charPosition - currentPos;
+                        ITextFragment leftFragment;
+                        ITextFragment rightFragment;
+
+                        if (_fragments[i] is TextDecorator decorator)
                         {
-                            
+                            // Берем внутренний текст без маркеров
+                            string innerText = decorator._fragment.GetOriginalText();
+                            string leftInner = innerText.Substring(0, splitPos);
+                            string rightInner = innerText.Substring(splitPos);
+
+                            // Создаем новые фрагменты с тем же декоратором
+                            if (decorator is BoldDecorator)
+                            {
+                                leftFragment = new BoldDecorator(new PlainTextFragment(leftInner));
+                                rightFragment = new BoldDecorator(new PlainTextFragment(rightInner));
+                            }
+                            else if (decorator is ItalicDecorator)
+                            {
+                                leftFragment = new ItalicDecorator(new PlainTextFragment(leftInner));
+                                rightFragment = new ItalicDecorator(new PlainTextFragment(rightInner));
+                            }
+                            else if (decorator is UnderlineDecorator)
+                            {
+                                leftFragment = new UnderlineDecorator(new PlainTextFragment(leftInner));
+                                rightFragment = new UnderlineDecorator(new PlainTextFragment(rightInner));
+                            }
+                            else
+                            {
+                                // Если вдруг появятся другие декораторы, кидаем ошибку или обрабатываем как plain
+                                leftFragment = new PlainTextFragment(leftInner);
+                                rightFragment = new PlainTextFragment(rightInner);
+                            }
                         }
                         else
                         {
-                            plainTextPos++;
+                            // Для обычного текста без декораторов
+                            string originalText = _fragments[i].GetOriginalText();
+                            string textWithoutMarkers = RemoveMarkers(originalText);
+                            int plainTextPos = 0;
+                            int splitIndex = 0;
+                            for (int j = 0; j < originalText.Length && plainTextPos < splitPos; j++)
+                            {
+                                if (j + 1 < originalText.Length && (originalText.Substring(j, 2) == "**" || originalText.Substring(j, 2) == "__"))
+                                {
+                                    j++;
+                                }
+                                else if (originalText[j] == '*')
+                                {
+                                    // Пропускаем одиночный *
+                                }
+                                else
+                                {
+                                    plainTextPos++;
+                                }
+                                splitIndex = j + 1;
+                            }
+                            string leftText = originalText.Substring(0, splitIndex);
+                            string rightText = originalText.Substring(splitIndex);
+                            leftFragment = new PlainTextFragment(leftText);
+                            rightFragment = new PlainTextFragment(rightText);
                         }
-                        splitIndex = j + 1;
+
+                        // Заменяем текущий фрагмент на левую часть
+                        _fragments[i] = leftFragment;
+                        // Вставляем новый текст
+                        _fragments.InsertRange(i + 1, newFragments);
+                        // Добавляем правую часть, если она не пустая
+                        if (!string.IsNullOrEmpty(rightFragment.GetOriginalText()))
+                        {
+                            _fragments.Insert(i + 1 + newFragments.Count, rightFragment);
+                        }
+
+                        _history.AddEntry("INSERT", beforeContent);
+                        Notify($"!!! Документ обновлен: Текст вставлен. !!!");
+                        return;
                     }
-
-                    string leftText = textWithoutMarkers.Substring(0, splitPos);
-                    string rightText = textWithoutMarkers.Substring(splitPos);
-
-                    string decoratorPrefix = "", decoratorSuffix = "";
-                    if (_fragments[i] is BoldDecorator)
+                    else if (charPosition == currentPos + fragmentLength)
                     {
-                        decoratorPrefix = "**";
-                        decoratorSuffix = "**";
+                        _fragments.InsertRange(i + 1, newFragments);
+                        _history.AddEntry("INSERT", beforeContent);
+                        Notify($"!!! Документ обновлен: Текст вставлен. !!!");
+                        return;
                     }
-                    else if (_fragments[i] is UnderlineDecorator)
-                    {
-                        decoratorPrefix = "__";
-                        decoratorSuffix = "__";
-                    }
-                    else if (_fragments[i] is ItalicDecorator)
-                    {
-                        decoratorPrefix = "*";
-                        decoratorSuffix = "*";
-                    }
-
-                    ITextFragment leftFragment = TextParser.Parse(decoratorPrefix + leftText + decoratorSuffix, Type)[0];
-                    ITextFragment rightFragment = TextParser.Parse(decoratorPrefix + rightText + decoratorSuffix, Type)[0];
-
-                    _fragments[i] = leftFragment;
-
-                    _fragments.InsertRange(i + 1, newFragments);
-
-                    if (!string.IsNullOrEmpty(rightText))
-                    {
-                        _fragments.Insert(i + 1 + newFragments.Count, rightFragment);
-                    }
-                    _history.AddEntry("INSERT", beforeContent);
-                    Notify($"!!! Document updated: Some text inserted. !!!");
-                    return;
+                    currentPos += fragmentLength;
                 }
-                currentPos += fragmentLength;
             }
+            _history.AddEntry("INSERT", beforeContent);
+            Notify($"!!! Документ обновлен: Текст вставлен. !!!");
         }
 
         public void DeleteText(int fragmentStart, int fragmentCount)
