@@ -176,7 +176,7 @@ namespace Lab2.Documentn
             var beforeContent = GetOriginalText();
             _fragments.RemoveRange(fragmentStart, fragmentCount);
             Notify($"!!! Document updated: Some text deleted. !!!");
-            _history.AddEntry("INSERT", beforeContent);
+            _history.AddEntry("DELETE", beforeContent);
         }
 
         public List<int> SearchWord(string word)
@@ -268,82 +268,19 @@ namespace Lab2.Documentn
             return new Document(type);
         }
         public static List<ITextFragment> Clipboard { get; set; } = new List<ITextFragment>();
-        public static Document OpenDocument(string path)
-        {
-            string format = Path.GetExtension(path).ToLower().TrimStart('.');
-            if (format == "txt")
-            {
-                string content = File.ReadAllText(path);
-                Document doc = new Document(DocumentType.PlainText);
-                doc.AppendTextNoNotify(content);
-                doc.FilePath = path;
-                return doc;
-            }
-            else if (format == "json")
-            {
-                string json = File.ReadAllText(path);
-                DocumentData data = JsonConvert.DeserializeObject<DocumentData>(json);
-                Document doc = new Document(data.Type);
-                doc.AppendTextNoNotify(data.Content);
-                doc.FilePath = path;
-                return doc;
-            }
-            else if (format == "xml")
-            {
-                using (var reader = new StreamReader(path))
-                {
-                    var serializer = new XmlSerializer(typeof(DocumentData));
-                    DocumentData data = (DocumentData)serializer.Deserialize(reader);
-                    Document doc = new Document(data.Type);
-                    doc.AppendTextNoNotify(data.Content);
-                    doc.FilePath = path;
-                    return doc;
-                }
-            }
-            throw new ArgumentException("Unsupported file format");
-        }
-
-        public static void SaveDocument(Document document, string path)
-        {
-            string format = Path.GetExtension(path).ToLower().TrimStart('.');
-            if (format == "txt")
-            {
-                File.WriteAllText(path, document.GetOriginalText());
-            }
-            else if (format == "json")
-            {
-                DocumentData data = new DocumentData { Type = document.Type, Content = document.GetOriginalText() };
-                string json = JsonConvert.SerializeObject(data);
-                File.WriteAllText(path, json);
-            }
-            else if (format == "xml")
-            {
-                DocumentData data = new DocumentData { Type = document.Type, Content = document.GetOriginalText() };
-                var serializer = new XmlSerializer(typeof(DocumentData));
-                using (var writer = new StreamWriter(path))
-                {
-                    serializer.Serialize(writer, data);
-                }
-            }
-            else
-            {
-                throw new ArgumentException("Unsupported file format");
-            }
-            document.FilePath = path;
-            document.Notify($"!!! Document saved to: {path} !!!");
-        }
 
         public static void DeleteDocument(string path)
         {
-            if (File.Exists(path))
+            // Note: Deletion might need strategy-specific logic, but for simplicity:
+            if (_storageStrategy is LocalFileStrategy && File.Exists(path))
             {
-                var document = OpenDocument(path);
+                var document = OpenDocument(path).Result; // Use await in async context
                 document.Notify($"!!! Document deleted: {path} !!!");
                 File.Delete(path);
             }
             else
             {
-                throw new FileNotFoundException("File does not exist", path);
+                throw new NotSupportedException("Deletion only supported for local files in this implementation");
             }
         }
 
@@ -352,34 +289,21 @@ namespace Lab2.Documentn
         {
             _storageStrategy = strategy;
         }
-
-        public static async Task SaveDocumentDB(Document document, string fileName)
+        public static async Task<Document> OpenDocument(string fileName)
         {
-            await _storageStrategy.SaveDocument(document.GetOriginalText(), fileName);
-            document.Notify($"!!! Document saved to: {fileName} !!!");
+            var data = await _storageStrategy.LoadDocument(fileName);
+            var doc = new Document(data.Type);
+            doc.AppendTextNoNotify(data.Content);
+            doc.FilePath = fileName;
+            return doc;
         }
 
-        public static async Task<Document> OpenDocumentDB(string fileName)
+        public static async Task SaveDocument(Document document, string fileName)
         {
-            var content = await _storageStrategy.LoadDocument(fileName);
-
-            if (string.IsNullOrEmpty(content))
-                throw new FileNotFoundException("Document not found in storage");
-
-            // Определяем тип документа по расширению файла
-            var docType = Path.GetExtension(fileName).ToLower() switch
-            {
-                ".txt" => DocumentType.PlainText,
-                ".json" => DocumentType.Markdown,
-                ".xml" => DocumentType.RichText,
-                _ => DocumentType.PlainText
-            };
-
-            var doc = new Document(docType);
-            doc.AppendTextNoNotify(content);
-            doc.FilePath = $"[CLOUD]:{fileName}";
-
-            return doc;
+            var data = new DocumentData { Type = document.Type, Content = document.GetOriginalText() };
+            await _storageStrategy.SaveDocument(data, fileName);
+            document.FilePath = fileName;
+            document.Notify($"!!! Document saved to: {fileName} !!!");
         }
     }
 }

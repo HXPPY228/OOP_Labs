@@ -54,30 +54,57 @@ namespace Lab2_UnitTests
     [TestClass]
     public class DocumentManagerTests
     {
-        private const string TestFilePath = "test.txt";
-
-        [TestCleanup]
-        public void Cleanup()
-        {
-            if (File.Exists(TestFilePath))
-                File.Delete(TestFilePath);
-        }
 
         [TestMethod]
-        public void SaveDocument_PlainText_ShouldCreateFile()
+        public async Task SaveDocument_PlainText_ShouldCreateFile()
         {
+            // Устанавливаем стратегию хранения для локальных файлов
+            DocumentManager.SetStorageStrategy(new LocalFileStrategy());
+
+            // Генерируем уникальный путь к файлу с расширением .txt
+            string testFilePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".txt");
+
+            // Создаем документ и добавляем текст
             var doc = new Document(DocumentType.PlainText);
-            doc.AppendText("Test");
-            DocumentManager.SaveDocument(doc, TestFilePath);
-            Assert.IsTrue(File.Exists(TestFilePath));
+            doc.AppendText("Test\nEND");
+
+            // Асинхронно сохраняем документ
+            await DocumentManager.SaveDocument(doc, testFilePath);
+
+            // Проверяем, что файл создан
+            Assert.IsTrue(File.Exists(testFilePath));
+
+            // Проверяем содержимое файла
+            string content = await File.ReadAllTextAsync(testFilePath);
+            Assert.AreEqual("Test\nEND", content);
+
+            // Удаляем временный файл
+            File.Delete(testFilePath);
         }
 
         [TestMethod]
-        public void OpenDocument_ValidFile_ShouldLoadContent()
+        public async Task OpenDocument_ValidFile_ShouldLoadContent()
         {
-            File.WriteAllText(TestFilePath, "Test");
-            var doc = DocumentManager.OpenDocument(TestFilePath);
+            // Устанавливаем стратегию хранения для локальных файлов
+            DocumentManager.SetStorageStrategy(new LocalFileStrategy());
+
+            // Генерируем уникальный путь к файлу с расширением .txt
+            string testFilePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".txt");
+
+            // Асинхронно записываем тестовое содержимое в файл
+            await File.WriteAllTextAsync(testFilePath, "Test");
+
+            // Асинхронно открываем документ
+            var doc = await DocumentManager.OpenDocument(testFilePath);
+
+            // Проверяем содержимое документа
             Assert.AreEqual("Test", doc.GetOriginalText());
+
+            // Проверяем, что тип документа — PlainText
+            Assert.AreEqual(DocumentType.PlainText, doc.Type);
+
+            // Удаляем временный файл
+            File.Delete(testFilePath);
         }
     }
     [TestClass]

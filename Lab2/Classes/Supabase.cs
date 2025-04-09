@@ -8,6 +8,8 @@ using Postgrest.Attributes;
 using Postgrest.Models;
 using Lab2.Interfaces;
 using Postgrest;
+using Lab2.Documentn;
+using Lab2.Enums;
 
 namespace Lab2.Classes
 {
@@ -20,6 +22,9 @@ namespace Lab2.Classes
 
         [Column("content")]
         public string Content { get; set; }
+
+        [Column("type")]
+        public string Type { get; set; }
 
         [Column("file_name")]
         public string FileName { get; set; }
@@ -38,11 +43,12 @@ namespace Lab2.Classes
             _supabase.InitializeAsync().Wait();
         }
 
-        public async Task SaveDocument(string content, string fileName)
+        public async Task SaveDocument(DocumentData data, string fileName)
         {
             var record = new DocumentRecord
             {
-                Content = content,
+                Content = data.Content,
+                Type = data.Type.ToString(),
                 FileName = fileName,
                 CreatedAt = DateTime.UtcNow
             };
@@ -50,13 +56,21 @@ namespace Lab2.Classes
             await _supabase.From<DocumentRecord>().Insert(record);
         }
 
-        public async Task<string> LoadDocument(string fileName)
+        public async Task<DocumentData> LoadDocument(string fileName)
         {
             var response = await _supabase.From<DocumentRecord>()
                 .Where(x => x.FileName == fileName)
                 .Get();
 
-            return response.Models.FirstOrDefault()?.Content;
+            var record = response.Models.FirstOrDefault();
+            if (record == null)
+                throw new FileNotFoundException("Document not found in storage");
+
+            return new DocumentData
+            {
+                Content = record.Content,
+                Type = Enum.Parse<DocumentType>(record.Type)
+            };
         }
     }
 }

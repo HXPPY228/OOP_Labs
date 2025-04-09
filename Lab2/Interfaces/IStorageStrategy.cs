@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Lab2.Documentn;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,7 +9,7 @@ namespace Lab2.Interfaces
 {
     public interface IStorageStrategy
     {
-        Task SaveDocument(string content, string fileName);
-        Task<string> LoadDocument(string fileName);
+        Task SaveDocument(DocumentData data, string fileName);
+        Task<DocumentData> LoadDocument(string fileName);
     }
 }

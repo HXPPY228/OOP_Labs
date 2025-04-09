@@ -1,22 +1,65 @@
-﻿using Lab2.Interfaces;
+﻿using Lab2.Documentn;
+using Lab2.Enums;
+using Lab2.Interfaces;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
 
 namespace Lab2.Classes
 {
     public class LocalFileStrategy : IStorageStrategy
     {
-        public async Task SaveDocument(string content, string fileName)
+        public async Task SaveDocument(DocumentData data, string fileName)
         {
-            await File.WriteAllTextAsync(fileName, content);
+            string format = Path.GetExtension(fileName).ToLower().TrimStart('.');
+            switch (format)
+            {
+                case "txt":
+                    await File.WriteAllTextAsync(fileName, data.Content);
+                    break;
+                case "json":
+                    string json = JsonConvert.SerializeObject(data);
+                    await File.WriteAllTextAsync(fileName, json);
+                    break;
+                case "xml":
+                    var serializer = new XmlSerializer(typeof(DocumentData));
+                    using (var writer = new StreamWriter(fileName))
+                    {
+                        serializer.Serialize(writer, data);
+                    }
+                    break;
+                default:
+                    throw new ArgumentException("Unsupported file format");
+            }
         }
 
-        public async Task<string> LoadDocument(string fileName)
+        public async Task<DocumentData> LoadDocument(string fileName)
         {
-            return await File.ReadAllTextAsync(fileName);
+            if (!File.Exists(fileName))
+                throw new FileNotFoundException("File not found");
+
+            string format = Path.GetExtension(fileName).ToLower().TrimStart('.');
+            switch (format)
+            {
+                case "txt":
+                    string txtContent = await File.ReadAllTextAsync(fileName);
+                    return new DocumentData { Type = DocumentType.PlainText, Content = txtContent };
+                case "json":
+                    string json = await File.ReadAllTextAsync(fileName);
+                    return JsonConvert.DeserializeObject<DocumentData>(json);
+                case "xml":
+                    using (var reader = new StreamReader(fileName))
+                    {
+                        var serializer = new XmlSerializer(typeof(DocumentData));
+                        return (DocumentData)serializer.Deserialize(reader);
+                    }
+                default:
+                    throw new ArgumentException("Unsupported file format");
+            }
         }
     }
 }

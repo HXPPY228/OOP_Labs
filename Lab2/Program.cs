@@ -142,9 +142,11 @@ class Program
                             default:
                                 Console.WriteLine("Invalid choice. Defaulting to PlainText.");
                                 docType = DocumentType.PlainText;
+                                PressAnyButton();
                                 break;
                         }
                         currentDocument = DocumentManager.CreateNewDocument(docType);
+                        currentDocument.Notify("New document created!");
                         currentDocument.Subscribe(Session.CurrentUser);
                         Console.WriteLine($"New {docType} document created.");
                         PressAnyButton();
@@ -160,32 +162,23 @@ class Program
                         {
                             if (storageChoice == "2")
                             {
-                                // Устанавливаем облачную стратегию
                                 DocumentManager.SetStorageStrategy(new SupabaseStorageStrategy(
-                                    Lab2.DB.GetUrl() ,
+                                    Lab2.DB.GetUrl(),
                                     Lab2.DB.GetKey()
                                 ));
-
                                 Console.Write("Enter cloud file name (e.g., document.json): ");
-                                string cloudFileName = Console.ReadLine();
-
-                                currentDocument = await DocumentManager.OpenDocumentDB(cloudFileName);
-                                currentDocument.Subscribe(Session.CurrentUser);
-                                Console.WriteLine($"Loaded from cloud: {cloudFileName}");
                             }
                             else
                             {
+                                DocumentManager.SetStorageStrategy(new LocalFileStrategy());
                                 Console.Write("Enter local file path (e.g., doc.txt): ");
-                                string localPath = Console.ReadLine();
-
-                                if (!File.Exists(localPath))
-                                    throw new FileNotFoundException("File not found");
-
-                                currentDocument = DocumentManager.OpenDocument(localPath);
-                                currentDocument.Subscribe(Session.CurrentUser);
-                                Console.WriteLine($"Loaded from local storage: {localPath}");
                             }
 
+                            string FileName = Console.ReadLine();
+                            currentDocument = await DocumentManager.OpenDocument(FileName);
+                            Console.WriteLine($"Loaded: {FileName}");
+
+                            currentDocument.Subscribe(Session.CurrentUser);
                             Console.WriteLine($"Type: {currentDocument.Type}");
                             Console.WriteLine($"Content:\n{currentDocument.GetDisplayText()}");
                         }
@@ -347,41 +340,42 @@ class Program
                         if (currentDocument == null)
                         {
                             Console.WriteLine("No document loaded. Create or open a document first.");
-                        }
-                        else
-                        {
-                            Console.WriteLine("Select storage type:");
-                            Console.WriteLine("1. Local File");
-                            Console.WriteLine("2. Supabase Cloud");
-                            var storageChoice1 = Console.ReadLine();
-
-                            IStorageStrategy strategy = storageChoice1 switch
-                            {
-                                "1" => new LocalFileStrategy(),
-                                "2" => new SupabaseStorageStrategy(
-                                    Lab2.DB.GetUrl(),
-                                    Lab2.DB.GetKey()),
-                                _ => throw new ArgumentException("Invalid storage type")
-                            };
-
-                            DocumentManager.SetStorageStrategy(strategy);
-
-                            Console.Write("Enter file name to save: ");
-                            string fileName = Console.ReadLine();
-
-                            currentDocument.FilePath = fileName;
-
-                            if (strategy is LocalFileStrategy)
-                            {
-                                DocumentManager.SaveDocument(currentDocument, fileName);
-                            }
-                            else if (strategy is SupabaseStorageStrategy)
-                            {
-                                await DocumentManager.SaveDocumentDB(currentDocument, fileName);
-                            }
                             PressAnyButton();
                             break;
                         }
+
+                        Console.WriteLine("Select storage type:");
+                        Console.WriteLine("1. Local File");
+                        Console.WriteLine("2. Supabase Cloud");
+                        var storageChoice1 = Console.ReadLine();
+
+                        try
+                        {
+                            if (storageChoice1 == "1")
+                            {
+                                DocumentManager.SetStorageStrategy(new LocalFileStrategy());
+                                Console.Write("Enter local file name to save (e.g., doc.txt): ");
+                            }
+                            else if (storageChoice1 == "2")
+                            {
+                                DocumentManager.SetStorageStrategy(new SupabaseStorageStrategy(
+                                    Lab2.DB.GetUrl(),
+                                    Lab2.DB.GetKey()
+                                ));
+                                Console.Write("Enter cloud file name to save (e.g., document.json): ");
+                            }
+                            else
+                            {
+                                throw new ArgumentException("Invalid storage type");
+                            }
+                            string FileName = Console.ReadLine();
+                            await DocumentManager.SaveDocument(currentDocument, FileName);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error: {ex.Message}");
+                        }
+
                         PressAnyButton();
                         break;
 
@@ -483,7 +477,18 @@ class Program
                         }
 
                         UserManager.UpdateUserRole(selectedUser.Name, roles[roleNumber - 1]);
-                        Console.WriteLine($"Роль пользователя {selectedUser.Name} успешно изменена на {roles[roleNumber - 1]}!");
+                        bool nulling = false;
+                        if (currentDocument == null)
+                        {
+                            currentDocument = new Document(0);
+                            nulling = true;
+                        }
+                        currentDocument.Notify($"Роль пользователя {selectedUser.Name} успешно изменена на {roles[roleNumber - 1]}!");
+                        if (nulling)
+                        {
+                            currentDocument = null;
+                            nulling = false;
+                        }
                         PressAnyButton();
                         break;
                     case "16":
@@ -532,6 +537,7 @@ class Program
                         if (currentDocument == null)
                         {
                             Console.WriteLine("No document loaded!");
+                            PressAnyButton();
                             break;
                         }
 
@@ -544,7 +550,7 @@ class Program
                             Console.WriteLine("{0,-25} {1,-10} {2,-50}",
                                 entry1.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
                                 entry1.ActionType,
-                                entry1.Content.Truncate(45));
+                                entry1.Content.Truncate(90));
                         }
                         PressAnyButton();
                         break;
