@@ -18,6 +18,7 @@ class Program
             for (int i = 0; i < doc._fragments.Count; i++)
             {
                 string fragmentText = doc._fragments[i].GetText();
+
                 if (fragmentText == "\n")
                 {
                     fragmentText = "[Newline]";
